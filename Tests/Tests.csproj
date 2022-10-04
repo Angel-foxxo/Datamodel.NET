@@ -3,24 +3,12 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
     <RootNamespace>Datamodel_Tests</RootNamespace>
-    <AssemblyName>Datamodel.NET Tests</AssemblyName>
+    <AssemblyName>Datamodel.NET-Tests</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	<UseWPF>true</UseWPF>
 	<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
 
   </PropertyGroup>
-  <Choose>
-    <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
   <ItemGroup>
     <None Update="Resources\binary4.dmx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -38,24 +26,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Datamodel.NET.csproj" />
   </ItemGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.CodedUITestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITest.Common, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITest.Extension, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITesting, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
   <ItemGroup>
     <PackageReference Include="Microsoft.DotNet.UpgradeAssistant.Extensions.Default.Analyzers" Version="0.4.346202">
       <PrivateAssets>all</PrivateAssets>

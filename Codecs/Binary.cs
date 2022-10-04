@@ -17,7 +17,7 @@ namespace Datamodel.Codecs
     {
         protected BinaryReader Reader;
 
-        static readonly Dictionary<int, Type[]> SupportedAttributes = new Dictionary<int, Type[]>();
+        static readonly Dictionary<int, Type[]> SupportedAttributes = new();
 
         /// <summary>
         /// The number of Datamodel binary ticks in one second. Used to store TimeSpan values.
@@ -33,7 +33,7 @@ namespace Datamodel.Codecs
 
         public void Dispose()
         {
-            if (Reader != null) Reader.Dispose();
+            Reader?.Dispose();
         }
 
         static byte TypeToId(Type type, int version)
@@ -92,7 +92,7 @@ namespace Datamodel.Codecs
 
         protected string ReadString_Raw()
         {
-            List<byte> raw = new List<byte>();
+            List<byte> raw = new();
             while (true)
             {
                 byte cur = Reader.ReadByte();
@@ -108,11 +108,11 @@ namespace Datamodel.Codecs
 
         class StringDictionary
         {
-            Binary Codec;
-            BinaryWriter Writer;
-            int EncodingVersion;
+            readonly Binary Codec;
+            readonly BinaryWriter Writer;
+            readonly int EncodingVersion;
 
-            List<string> Strings = new List<string>();
+            readonly List<string> Strings = new();
             public bool Dummy;
 
             // binary 4 uses int for dictionary length, but short for dictionary indices. Whoops!
@@ -122,7 +122,7 @@ namespace Datamodel.Codecs
             /// <summary>
             /// Constructs a new <see cref="StringDictionary"/> from a Binary stream.
             /// </summary>
-            public StringDictionary(Binary codec, BinaryReader reader)
+            public StringDictionary(Binary codec)
             {
                 Codec = codec;
                 EncodingVersion = codec.EncodingVersion;
@@ -154,7 +154,7 @@ namespace Datamodel.Codecs
                 }
             }
 
-            private HashSet<Element> Scraped;
+            private readonly HashSet<Element> Scraped;
 
             void ScrapeElement(Element elem)
             {
@@ -166,11 +166,19 @@ namespace Datamodel.Codecs
                 foreach (var attr in elem)
                 {
                     Strings.Add(attr.Key);
-                    if (attr.Value is string) Strings.Add((string)attr.Value);
-                    else if (attr.Value is Element) ScrapeElement((Element)attr.Value);
-                    else if (attr.Value is IList<Element>)
-                        foreach (var array_elem in (IList<Element>)attr.Value)
-                            ScrapeElement(array_elem);
+                    switch (attr.Value)
+                    {
+                        case string stringValue:
+                            Strings.Add(stringValue);
+                            break;
+                        case Element elementValue:
+                            ScrapeElement(elementValue);
+                            break;
+                        case IList<Element> elementListValue:
+                            foreach (var array_elem in elementListValue)
+                                ScrapeElement(array_elem);
+                            break;
+                    }
                 }
             }
 
@@ -209,8 +217,9 @@ namespace Datamodel.Codecs
 
         public void Encode(Datamodel dm, int encoding_version, Stream stream)
         {
-            using (var writer = new DmxBinaryWriter(stream))
-                new Encoder(this, writer, dm, encoding_version).Encode();
+            using var writer = new DmxBinaryWriter(stream);
+            var encoder = new Encoder(writer, dm, encoding_version);
+            encoder.Encode();
         }
 
         float[] ReadVector(int dim)
@@ -246,8 +255,8 @@ namespace Datamodel.Codecs
                 return raw_string ? ReadString_Raw() : StringDict.ReadString();
 
             if (type == typeof(byte[]))
-                return (Reader.ReadBytes(Reader.ReadInt32()));
-            if (type == typeof(TimeSpan))                
+                return Reader.ReadBytes(Reader.ReadInt32());
+            if (type == typeof(TimeSpan))
                 return TimeSpan.FromTicks(Reader.ReadInt32() * (TimeSpan.TicksPerSecond / DatamodelTicksPerSecond));
 
             if (type == typeof(System.Drawing.Color))
@@ -278,7 +287,7 @@ namespace Datamodel.Codecs
             }
             if (type == typeof(Matrix4x4))
             {
-                var ords = ReadVector(4*4);
+                var ords = ReadVector(4 * 4);
                 return new Matrix4x4(
                     ords[0], ords[1], ords[2], ords[3],
                     ords[4], ords[5], ords[6], ords[7],
@@ -322,7 +331,7 @@ namespace Datamodel.Codecs
                 }
             }
 
-            StringDict = new StringDictionary(this, Reader);
+            StringDict = new StringDictionary(this);
             var num_elements = Reader.ReadInt32();
 
             // read index
@@ -449,17 +458,17 @@ namespace Datamodel.Codecs
             Reader.BaseStream.Seek(length * count, SeekOrigin.Current);
         }
 
-        struct Encoder
+        readonly struct Encoder
         {
-            Dictionary<Element, int> ElementIndices;
-            List<Element> ElementOrder;
-            BinaryWriter Writer;
-            StringDictionary StringDict;
-            Datamodel Datamodel;
+            readonly Dictionary<Element, int> ElementIndices;
+            readonly List<Element> ElementOrder;
+            readonly BinaryWriter Writer;
+            readonly StringDictionary StringDict;
+            readonly Datamodel Datamodel;
 
-            int EncodingVersion;
+            readonly int EncodingVersion;
 
-            public Encoder(Binary codec, BinaryWriter writer, Datamodel dm, int version)
+            public Encoder(BinaryWriter writer, Datamodel dm, int version)
             {
                 EncodingVersion = version;
                 Writer = writer;
@@ -476,7 +485,7 @@ namespace Datamodel.Codecs
                 Writer.Write(String.Format(CodecUtilities.HeaderPattern, "binary", EncodingVersion, Datamodel.Format, Datamodel.FormatVersion) + "\n");
 
                 if (EncodingVersion >= 9)
-                    Writer.Write((int)0); // Prefix elements
+                    Writer.Write(0); // Prefix elements
 
                 StringDict.WriteSelf();
 
@@ -496,17 +505,17 @@ namespace Datamodel.Codecs
                 {
                     if (attr.Value == null) continue;
 
-                    var child_elem = attr.Value as Element;
-                    if (child_elem != null && !counted.Contains(child_elem))
-                        num_elems += CountChildren(child_elem, counted);
-                    else
+                    if (attr.Value is Element child_elem && !counted.Contains(child_elem))
                     {
-                        var child_array = attr.Value as IEnumerable<Element>;
-                        if (child_array != null)
-                            foreach (var array_elem in child_array.Where(c => c != null && !counted.Contains(c)))
-                                num_elems += CountChildren(array_elem, counted);
+                        num_elems += CountChildren(child_elem, counted);
+                    }
+                    else if (attr.Value is IEnumerable<Element> child_array)
+                    {
+                        foreach (var array_elem in child_array.Where(c => c != null && !counted.Contains(c)))
+                            num_elems += CountChildren(array_elem, counted);
                     }
                 }
+
                 return num_elems;
             }
 
@@ -573,9 +582,8 @@ namespace Datamodel.Codecs
                     return;
                 }
 
-                if (value is Element)
+                if (value is Element child_elem)
                 {
-                    var child_elem = (Element)value;
                     if (child_elem.Stub)
                     {
                         Writer.Write(-2);
@@ -587,115 +595,110 @@ namespace Datamodel.Codecs
                     return;
                 }
 
-                if (value is string)
+                if (value is string string_value)
                 {
                     if (EncodingVersion < 4 || in_array)
-                        Writer.Write((string)value);
+                        Writer.Write(string_value);
                     else
-                        StringDict.WriteString((string)value);
+                        StringDict.WriteString(string_value);
                     return;
                 }
 
-                if (value is bool)
+                if (value is bool bool_value)
                 {
-                    Writer.Write((bool)value == true ? (byte)1 : (byte)0);
+                    Writer.Write(bool_value == true ? (byte)1 : (byte)0);
                     return;
                 }
 
-                if (value is byte[])
+                if (value is byte[] binary_value)
                 {
-                    var binary_value = (byte[])value;
                     Writer.Write(binary_value.Length);
                     Writer.Write(binary_value);
                     return;
                 }
 
-                if (value is TimeSpan)
+                if (value is TimeSpan time_span)
                 {
-                    Writer.Write((int)(((TimeSpan)value).Ticks / (TimeSpan.TicksPerSecond / DatamodelTicksPerSecond)));
+                    Writer.Write((int)(time_span.Ticks / (TimeSpan.TicksPerSecond / DatamodelTicksPerSecond)));
                     return;
                 }
 
-                if (value is System.Drawing.Color)
+                if (value is System.Drawing.Color colour_value)
                 {
-                    var colour_value = (System.Drawing.Color)value;
                     Writer.Write(new byte[] { colour_value.R, colour_value.G, colour_value.B, colour_value.A });
                     return;
                 }
 
-                if (value is Vector2)
+                if (value is Vector2 vector2)
                 {
-                    var v = (Vector2)value;
-                    Writer.Write(v.X);
-                    Writer.Write(v.Y);
+                    Writer.Write(vector2.X);
+                    Writer.Write(vector2.Y);
                     return;
                 }
-                if (value is Vector3)
+                if (value is Vector3 vector3)
                 {
-                    var v = (Vector3)value;
-                    Writer.Write(v.X);
-                    Writer.Write(v.Y);
-                    Writer.Write(v.Z);
+                    Writer.Write(vector3.X);
+                    Writer.Write(vector3.Y);
+                    Writer.Write(vector3.Z);
                     return;
                 }
-                if (value is Vector4)
+                if (value is Vector4 vector4)
                 {
-                    var v = (Vector4)value;
-                    Writer.Write(v.X);
-                    Writer.Write(v.Y);
-                    Writer.Write(v.Z);
-                    Writer.Write(v.W);
+                    Writer.Write(vector4.X);
+                    Writer.Write(vector4.Y);
+                    Writer.Write(vector4.Z);
+                    Writer.Write(vector4.W);
                     return;
                 }
-                if (value is Quaternion)
+                if (value is Quaternion quaternion)
                 {
-                    var v = (Quaternion)value;
-                    Writer.Write(v.X);
-                    Writer.Write(v.Y);
-                    Writer.Write(v.Z);
-                    Writer.Write(v.W);
+                    Writer.Write(quaternion.X);
+                    Writer.Write(quaternion.Y);
+                    Writer.Write(quaternion.Z);
+                    Writer.Write(quaternion.W);
                     return;
                 }
-                if (value is Matrix4x4)
+                if (value is Matrix4x4 matrix)
                 {
-                    var v = (Matrix4x4)value;
-                    Writer.Write(v.M11);
-                    Writer.Write(v.M12);
-                    Writer.Write(v.M13);
-                    Writer.Write(v.M14);
-                    Writer.Write(v.M21);
-                    Writer.Write(v.M22);
-                    Writer.Write(v.M23);
-                    Writer.Write(v.M24);
-                    Writer.Write(v.M31);
-                    Writer.Write(v.M32);
-                    Writer.Write(v.M33);
-                    Writer.Write(v.M34);
-                    Writer.Write(v.M41);
-                    Writer.Write(v.M42);
-                    Writer.Write(v.M43);
-                    Writer.Write(v.M44);
+                    Writer.Write(matrix.M11);
+                    Writer.Write(matrix.M12);
+                    Writer.Write(matrix.M13);
+                    Writer.Write(matrix.M14);
+                    Writer.Write(matrix.M21);
+                    Writer.Write(matrix.M22);
+                    Writer.Write(matrix.M23);
+                    Writer.Write(matrix.M24);
+                    Writer.Write(matrix.M31);
+                    Writer.Write(matrix.M32);
+                    Writer.Write(matrix.M33);
+                    Writer.Write(matrix.M34);
+                    Writer.Write(matrix.M41);
+                    Writer.Write(matrix.M42);
+                    Writer.Write(matrix.M43);
+                    Writer.Write(matrix.M44);
                     return;
                 }
 
-                if (value is int)
+                if (value is int intValue)
                 {
-                    Writer.Write((int)value);
+                    Writer.Write(intValue);
                     return;
                 }
-                if (value is float)
+                if (value is float floatValue)
                 {
-                    Writer.Write((float)value);
+                    Writer.Write(floatValue);
                     return;
                 }
-                if (value is byte)
+
+                if (value is byte byteValue)
                 {
-                    Writer.Write((byte)value);
+                    Writer.Write(byteValue);
                     return;
                 }
-                if (value is UInt64)
+
+                if (value is ulong ulongValue)
                 {
-                    Writer.Write((UInt64)value);
+                    Writer.Write(ulongValue);
                     return;
                 }
 

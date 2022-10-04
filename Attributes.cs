@@ -24,8 +24,7 @@ namespace Datamodel
         /// <param name="value">The value of the Attribute, which must be of a supported Datamodel type.</param>
         public Attribute(string name, AttributeList owner, object value)
         {
-            if (name == null)
-                throw new ArgumentNullException("name");
+            ArgumentNullException.ThrowIfNull(name); 
 
             Name = name;
             _Owner = owner;
@@ -41,8 +40,7 @@ namespace Datamodel
         public Attribute(string name, AttributeList owner, long defer_offset)
             : this(name, owner, null)
         {
-            if (owner == null)
-                throw new ArgumentNullException("owner");
+            ArgumentNullException.ThrowIfNull(owner);
 
             Offset = defer_offset;
         }
@@ -379,7 +377,7 @@ namespace Datamodel
 
         public virtual bool ContainsKey(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            ArgumentNullException.ThrowIfNull(key);
             lock (Attribute_ChangeLock)
                 return Inner[key] != null;
         }
@@ -406,14 +404,14 @@ namespace Datamodel
         {
             get
             {
-                if (name == null) throw new ArgumentNullException("name");
+                ArgumentNullException.ThrowIfNull(name);
                 var attr = (Attribute)Inner[name];
                 if (attr == null) throw new KeyNotFoundException(String.Format("{0} does not have an attribute called \"{1}\"", this, name));
                 return attr.Value;
             }
             set
             {
-                if (name == null) throw new ArgumentNullException("name");
+                ArgumentNullException.ThrowIfNull(name);
                 if (value != null && !Datamodel.IsDatamodelType(value.GetType()))
                     throw new AttributeTypeException(String.Format("{0} is not a valid Datamodel attribute type. (If this is an array, it must implement IList<T>).", value.GetType().FullName));
 

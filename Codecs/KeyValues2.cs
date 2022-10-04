@@ -17,8 +17,8 @@ namespace Datamodel.Codecs
         KV2Writer Writer;
         Datamodel DM;
 
-        static readonly Dictionary<Type, string> TypeNames = new Dictionary<Type, string>();
-        static readonly Dictionary<int, Type[]> ValidAttributes = new Dictionary<int, Type[]>();
+        static readonly Dictionary<Type, string> TypeNames = new();
+        static readonly Dictionary<int, Type[]> ValidAttributes = new();
         static KeyValues2()
         {
             TypeNames[typeof(Element)] = "element";
@@ -38,16 +38,15 @@ namespace Datamodel.Codecs
             ValidAttributes[1] = ValidAttributes[2] = ValidAttributes[3] = TypeNames.Select(kv => kv.Key).ToArray();
 
             TypeNames[typeof(byte)] = "uint8";
-            TypeNames[typeof(UInt64)] = "uint64";
+            TypeNames[typeof(ulong)] = "uint64";
 
             ValidAttributes[4] = TypeNames.Select(kv => kv.Key).ToArray();
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "DM")]
         public void Dispose()
         {
-            if (Reader != null) Reader.Dispose();
-            if (Writer != null) Writer.Dispose();
+            Reader?.Dispose();
+            Writer?.Dispose();
         }
 
         #region Encode
@@ -64,7 +63,7 @@ namespace Datamodel.Codecs
             }
             int indent_count = 0;
             string indent_string = "\n";
-            TextWriter Output;
+            readonly TextWriter Output;
 
             public KV2Writer(Stream output)
             {
@@ -76,9 +75,9 @@ namespace Datamodel.Codecs
                 Output.Dispose();
             }
 
-            string Sanitise(string value)
+            static string Sanitise(string value)
             {
-                return value == null ? null : value.Replace("\"", "\\\"");
+                return value?.Replace("\"", "\\\"");
             }
 
             /// <summary>
@@ -142,16 +141,17 @@ namespace Datamodel.Codecs
                 Users[elem] = 1;
                 foreach (var attr in elem)
                 {
-                    if (attr.Value == null) continue;
-                    var child_elem = attr.Value as Element;
-                    if (child_elem != null)
-                        CountUsers(child_elem);
-                    else
+                    if (attr.Value == null)
+                        continue;
+
+                    if (attr.Value is Element child_elem)
                     {
-                        var enumerable = attr.Value as IEnumerable<Element>;
-                        if (enumerable != null)
-                            foreach (var array_elem in enumerable.Where(c => c != null))
-                                CountUsers(array_elem);
+                        CountUsers(child_elem);
+                    }
+                    else if (attr.Value is IEnumerable<Element> enumerable)
+                    {
+                        foreach (var array_elem in enumerable.Where(c => c != null))
+                            CountUsers(array_elem);
                     }
                 }
             }
@@ -267,7 +267,7 @@ namespace Datamodel.Codecs
                 }
                 else if (type == typeof(Matrix4x4))
                 {
-                    var arr = new float[4*4];
+                    var arr = new float[4 * 4];
                     var m = (Matrix4x4)value;
                     value = string.Join(" ", m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
                 }
@@ -341,7 +341,7 @@ namespace Datamodel.Codecs
         #endregion
 
         #region Decode
-        StringBuilder TokenBuilder = new StringBuilder();
+        readonly StringBuilder TokenBuilder = new();
         int Line = 0;
         string Decode_NextToken()
         {
@@ -352,7 +352,7 @@ namespace Datamodel.Codecs
             {
                 var read = Reader.Read();
                 if (read == -1) throw new EndOfStreamException();
-                var c = (Char)read;
+                var c = (char)read;
                 if (escaped)
                 {
                     TokenBuilder.Append(c);
@@ -390,14 +390,13 @@ namespace Datamodel.Codecs
             Element elem;
             var id_s = Decode_NextToken();
 
-            if (String.IsNullOrEmpty(id_s))
+            if (string.IsNullOrEmpty(id_s))
                 elem = null;
             else
             {
-                Guid id = new Guid(id_s);
+                Guid id = new(id_s);
                 elem = DM.AllElements[id];
-                if (elem == null)
-                    elem = new Element(DM, id);
+                elem ??= new Element(DM, id);
             }
             return elem;
         }

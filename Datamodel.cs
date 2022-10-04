@@ -27,17 +27,35 @@ namespace Datamodel
             {
                 DM = dm;
             }
-            Datamodel DM;
 
-            public Element Root { get { return DM.Root; } }
-            public ElementList AllElements { get { return DM.AllElements; } }
-            public AttributeList PrefixAttributes { get { return DM.PrefixAttributes; } }
+            readonly Datamodel DM;
+
+            public Element Root => DM.Root;
+            public ElementList AllElements => DM.AllElements;
+            public AttributeList PrefixAttributes => DM.PrefixAttributes;
         }
+
         #region Attribute types
-        public static Type[] AttributeTypes { get { return _AttributeTypes; } }
-        static Type[] _AttributeTypes = { typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]), 
-                typeof(TimeSpan), typeof(System.Drawing.Color), typeof(Vector2), typeof(Vector3),typeof(Vector4), typeof(Quaternion), typeof(Matrix4x4),
-				typeof(byte), typeof(UInt64) };
+
+        private static readonly Type[] attributeTypes = {
+            typeof(Element),
+            typeof(int),
+            typeof(float),
+            typeof(bool),
+            typeof(string),
+            typeof(byte[]),
+            typeof(TimeSpan),
+            typeof(System.Drawing.Color),
+            typeof(Vector2),
+            typeof(Vector3),
+            typeof(Vector4),
+            typeof(Quaternion),
+            typeof(Matrix4x4),
+            typeof(byte),
+            typeof(ulong)
+        };
+
+        public static Type[] AttributeTypes => attributeTypes;
 
         /// <summary>
         /// Determines whether the given Type is valid as a Datamodel <see cref="Attribute"/>.
@@ -59,7 +77,7 @@ namespace Datamodel
         public static bool IsDatamodelArrayType(Type t)
         {
             var inner = GetArrayInnerType(t);
-            return inner != null ? Datamodel.AttributeTypes.Contains(inner) : false;
+            return inner != null && Datamodel.AttributeTypes.Contains(inner);
         }
 
         /// <summary>
@@ -68,9 +86,16 @@ namespace Datamodel
         /// <param name="t">The Type to check.</param>
         public static Type GetArrayInnerType(Type t)
         {
-            if (t == typeof(Element)) return null;
+            if (t == typeof(Element))
+            {
+                return null;
+            }
+
             var i_type = t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IList<>) ? t : t.GetInterface("IList`1");
-            if (i_type == null) return null;
+            if (i_type == null)
+            {
+                return null;
+            }
 
             var inner = i_type.GetGenericArguments()[0];
             return inner;
@@ -79,14 +104,15 @@ namespace Datamodel
 
         static Datamodel()
         {
-            Datamodel.RegisterCodec(typeof(Codecs.Binary));
-            Datamodel.RegisterCodec(typeof(Codecs.KeyValues2));
+            RegisterCodec(typeof(Binary));
+            RegisterCodec(typeof(KeyValues2));
             TextEncoding = new System.Text.UTF8Encoding(false);
         }
 
         #region Codecs
-        static Dictionary<CodecRegistration, Type> Codecs = new Dictionary<CodecRegistration, Type>();
-        public static IEnumerable<CodecRegistration> CodecsRegistered { get { return Codecs.Keys.OrderBy(reg => String.Join(null, reg.Item1, reg.Item2)).ToArray(); } }
+        public static readonly Dictionary<CodecRegistration, Type> Codecs = new();
+
+        public static IEnumerable<CodecRegistration> CodecsRegistered => Codecs.Keys.OrderBy(reg => string.Join(null, reg.Item1, reg.Item2)).ToArray();
 
         /// <summary>
         /// Registers a new <see cref="ICodec"/> with an encoding name and one or more encoding versions.
@@ -95,12 +121,21 @@ namespace Datamodel
         /// <param name="type">The ICodec implementation being registered.</param>
         public static void RegisterCodec(Type type)
         {
-            if (type.GetInterface(typeof(ICodec).FullName) == null) throw new CodecException(String.Format("{0} does not implement Datamodel.Codecs.ICodec.", type.Name));
-            if (type.GetConstructor(Type.EmptyTypes) == null) throw new CodecException(String.Format("{0} does not have a default constructor.", type.Name));
+            if (type.GetInterface(typeof(ICodec).FullName) == null)
+            {
+                throw new CodecException($"{type.Name} does not implement Datamodel.Codecs.ICodec.");
+            }
+
+            if (type.GetConstructor(Type.EmptyTypes) == null)
+            {
+                throw new CodecException($"{type.Name} does not have a default constructor.");
+            }
 
             var format_attrs = (CodecFormatAttribute[])type.GetCustomAttributes(typeof(CodecFormatAttribute), true);
             if (format_attrs.Length == 0)
-                throw new CodecException(String.Format("{0} does not provide Datamodel.Codecs.CodecFormatAttribute.", type.Name));
+            {
+                throw new CodecException($"{type.Name} does not provide Datamodel.Codecs.CodecFormatAttribute.");
+            }
 
             foreach (var format_attr in format_attrs)
             {
@@ -108,17 +143,22 @@ namespace Datamodel
                 {
                     var reg = new CodecRegistration(format_attr.Name, version);
                     if (Codecs.ContainsKey(reg) && Codecs[reg] != type)
-                        System.Diagnostics.Trace.TraceInformation("Datamodel.NET: Replacing existing codec for {0} {1} ({2}) with {3}", format_attr.Name, version, Codecs[reg].Name, type.Name);
+                    {
+                        Trace.TraceInformation("Datamodel.NET: Replacing existing codec for {0} {1} ({2}) with {3}", format_attr.Name, version, Codecs[reg].Name, type.Name);
+                    }
+
                     Codecs[reg] = type;
                 }
             }
         }
 
-        static ICodec GetCodec(string encoding, int encoding_version)
+        private static ICodec GetCodec(string encoding, int encoding_version)
         {
             Type codec_type;
             if (!Codecs.TryGetValue(new CodecRegistration(encoding, encoding_version), out codec_type))
-                throw new CodecException(String.Format("No codec found for {0} version {1}.", encoding, encoding_version));
+            {
+                throw new CodecException($"No codec found for {encoding} version {encoding_version}.");
+            }
 
             return (ICodec)codec_type.GetConstructor(Type.EmptyTypes).Invoke(null);
         }
@@ -140,9 +180,12 @@ namespace Datamodel
         /// Gets or sets the assumed encoding of text in DMX files. Defaults to UTF8.
         /// </summary>
         /// <remarks>Changing this value does not alter Datamodels which are already in memory.</remarks>
-        public static System.Text.Encoding TextEncoding { get; set; }
+        public static System.Text.Encoding TextEncoding
+        {
+            get; set;
+        }
 
-        const string FormatBlankError = "Cannot save while Datamodel.Format is blank";
+        private const string FormatBlankError = "Cannot save while Datamodel.Format is blank";
 
         /// <summary>
         /// Writes this Datamodel to a <see cref="Stream"/> with the given encoding and encoding version.
@@ -153,8 +196,11 @@ namespace Datamodel
         /// <exception cref="InvalidOperationException">Thrown when the value of <see cref="Datamodel.Format"/> is null or whitespace.</exception>
         public void Save(Stream stream, string encoding, int encoding_version)
         {
-            if (String.IsNullOrWhiteSpace(Format))
+            if (string.IsNullOrWhiteSpace(Format))
+            {
                 throw new InvalidOperationException(FormatBlankError);
+            }
+
             GetCodec(encoding, encoding_version).Encode(this, encoding_version, stream);
         }
 
@@ -167,12 +213,13 @@ namespace Datamodel
         /// <exception cref="InvalidOperationException">Thrown when the value of <see cref="Datamodel.Format"/> is null or whitespace.</exception>
         public void Save(string path, string encoding, int encoding_version)
         {
-            if (String.IsNullOrWhiteSpace(Format))
-                throw new InvalidOperationException(FormatBlankError);
-            using (var stream = System.IO.File.Create(path))
+            if (string.IsNullOrWhiteSpace(Format))
             {
-                Save(stream, encoding, encoding_version);
+                throw new InvalidOperationException(FormatBlankError);
             }
+
+            using var stream = System.IO.File.Create(path);
+            Save(stream, encoding, encoding_version);
         }
 
         /// <summary>
@@ -201,7 +248,7 @@ namespace Datamodel
         /// <param name="defer_mode">How to handle deferred loading.</param>
         public static Datamodel Load(string path, DeferredMode defer_mode = DeferredMode.Automatic)
         {
-            var stream = System.IO.File.OpenRead(path);
+            var stream = File.OpenRead(path);
             Datamodel dm = null;
             try
             {
@@ -214,15 +261,16 @@ namespace Datamodel
             }
         }
 
-        static Datamodel Load_Internal(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic)
+        private static Datamodel Load_Internal(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic)
         {
             stream.Seek(0, SeekOrigin.Begin);
-            var header = String.Empty;
+            var header = string.Empty;
             int b;
             while ((b = stream.ReadByte()) != -1)
             {
                 header += (char)b;
-                if (b == '>') break;
+                if (b == '>')
+                    break;
                 if (header.Length > 128) // probably not a DMX at this point
                     break;
             }
@@ -241,10 +289,10 @@ namespace Datamodel
             ICodec codec = GetCodec(encoding, encoding_version);
 
             var dm = codec.Decode(encoding_version, format, format_version, stream, defer_mode);
-            if (defer_mode == DeferredMode.Automatic && codec is IDeferredAttributeCodec)
+            if (defer_mode == DeferredMode.Automatic && codec is IDeferredAttributeCodec deferredCodec)
             {
                 dm.Stream = stream;
-                dm.Codec = (IDeferredAttributeCodec)codec;
+                dm.Codec = deferredCodec;
             }
 
             dm.Format = format;
@@ -285,20 +333,23 @@ namespace Datamodel
         [DebuggerTypeProxy(typeof(DebugView))]
         public class ElementList : IEnumerable<Element>, INotifyCollectionChanged, IDisposable
         {
-            internal ReaderWriterLockSlim ChangeLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+            internal ReaderWriterLockSlim ChangeLock = new(LockRecursionPolicy.SupportsRecursion);
 
             internal class DebugView
             {
                 public DebugView(ElementList item)
-                { Item = item; }
-                ElementList Item;
+                {
+                    Item = item;
+                }
+
+                private readonly ElementList Item;
 
                 [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-                public Element[] Elements { get { return Item.store.Values.Cast<Element>().ToArray(); } }
+                public Element[] Elements => Item.store.Values.Cast<Element>().ToArray();
             }
 
-            OrderedDictionary store = new OrderedDictionary();
-            Datamodel Owner;
+            private readonly OrderedDictionary store = new();
+            private readonly Datamodel Owner;
 
             internal ElementList(Datamodel owner)
             {
@@ -313,7 +364,7 @@ namespace Datamodel
                     Element existing = (Element)store[item.ID];
                     if (existing != null && !existing.Stub)
                     {
-                        throw new ElementIdException(String.Format("Element ID {0} already in use in this Datamodel.", item.ID));
+                        throw new ElementIdException($"Element ID {item.ID} already in use in this Datamodel.");
                     }
 
                     Debug.Assert(item.Owner != null);
@@ -422,7 +473,7 @@ namespace Datamodel
             /// <returns>true if item is successfully removed; otherwise, false.</returns>
             public bool Remove(Element item, RemoveMode mode)
             {
-                if (item == null) throw new ArgumentNullException("item");
+                ArgumentNullException.ThrowIfNull(item);
 
                 ChangeLock.EnterUpgradeableReadLock();
                 try
@@ -440,7 +491,10 @@ namespace Datamodel
                                 lock (elem.SyncRoot)
                                 {
                                     foreach (var attr in elem.Where(a => a.Value == item).ToArray())
+                                    {
                                         elem[attr.Key] = replacement;
+                                    }
+
                                     foreach (var array in elem.Select(a => a.Value).OfType<IList<Element>>())
                                         for (int i = 0; i < array.Count; i++)
                                             if (array[i] == item)
@@ -456,7 +510,7 @@ namespace Datamodel
                             ChangeLock.ExitWriteLock();
                         }
 
-                        if (CollectionChanged != null) CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
+                        CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
                         return true;
                     }
                     else return false;
@@ -484,7 +538,8 @@ namespace Datamodel
                             store.Remove(elem.ID);
                             elem.Owner = null;
                         }
-                        if (CollectionChanged != null) CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, (System.Collections.IList)used));
+
+                        CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, (System.Collections.IList)used));
                     }
                     finally
                     {
@@ -502,20 +557,25 @@ namespace Datamodel
                 found.Add(elem);
                 foreach (var value in elem.Inner.Values.Cast<Attribute>().Select(a => a.RawValue))
                 {
-                    var value_elem = value as Element;
-                    if (value_elem != null)
+                    if (value is Element value_elem)
                     {
                         if (found.Add(value_elem))
+                        {
                             WalkElemTree(value_elem, found);
+                        }
+
                         continue;
                     }
-                    var elem_array = value as ElementArray;
-                    if (elem_array != null)
+                    if (value is ElementArray elem_array)
+                    {
                         foreach (var item in elem_array.RawList)
                         {
                             if (item != null && found.Add(item))
+                            {
                                 WalkElemTree(item, found);
+                            }
                         }
+                    }
                 }
             }
 
@@ -565,7 +625,10 @@ namespace Datamodel
             PrefixAttributes = new AttributeList(this);
         }
 
-        protected bool Initialising { get; private set; }
+        protected bool Initialising
+        {
+            get; private set;
+        }
         void ISupportInitialize.BeginInit()
         {
             if (Initialising) throw new InvalidOperationException("Datamodel is already initializing.");
@@ -587,7 +650,7 @@ namespace Datamodel
         /// </summary>
         public void Dispose()
         {
-            if (Stream != null) Stream.Dispose();
+            Stream?.Dispose();
             AllElements.Dispose();
         }
 
@@ -598,8 +661,11 @@ namespace Datamodel
         /// </summary>
         public bool AllowRandomIDs
         {
-            get { return _AllowRandomIDs; }
-            set { _AllowRandomIDs = value; OnPropertyChanged(); }
+            get => _AllowRandomIDs;
+            set
+            {
+                _AllowRandomIDs = value; OnPropertyChanged();
+            }
         }
         bool _AllowRandomIDs = true;
 
@@ -609,7 +675,7 @@ namespace Datamodel
         /// <exception cref="ArgumentException">Thrown when an attempt is made to set a value containing the space character.</exception>
         public string Format
         {
-            get { return _Format; }
+            get => _Format;
             set
             {
                 if (value != null && value.Contains(' '))
@@ -625,8 +691,11 @@ namespace Datamodel
         /// </summary>
         public int FormatVersion
         {
-            get { return _FormatVersion; }
-            set { _FormatVersion = value; OnPropertyChanged(); }
+            get => _FormatVersion;
+            set
+            {
+                _FormatVersion = value; OnPropertyChanged();
+            }
         }
         int _FormatVersion;
 
@@ -636,7 +705,7 @@ namespace Datamodel
         /// <exception cref="ArgumentException">Thrown when an attempt is made to set a value containing the space character.</exception>
         public string Encoding
         {
-            get { return _Encoding; }
+            get => _Encoding;
             set
             {
                 if (value != null && value.Contains(' '))
@@ -652,8 +721,11 @@ namespace Datamodel
         /// </summary>
         public int EncodingVersion
         {
-            get { return _EncodingVersion; }
-            set { _EncodingVersion = value; OnPropertyChanged(); }
+            get => _EncodingVersion;
+            set
+            {
+                _EncodingVersion = value; OnPropertyChanged();
+            }
         }
         int _EncodingVersion;
 
@@ -666,7 +738,7 @@ namespace Datamodel
         /// <exception cref="ElementOwnershipException">Thown when an attempt is made to assign an Element from another Datamodel to this property.</exception>
         public Element Root
         {
-            get { return _Root; }
+            get => _Root;
             set
             {
                 if (value != null)
@@ -682,12 +754,18 @@ namespace Datamodel
         }
         Element _Root;
 
-        public AttributeList PrefixAttributes { get; protected set; }
+        public AttributeList PrefixAttributes
+        {
+            get; protected set;
+        }
 
         /// <summary>
         /// Gets all Elements owned by this Datamodel. Only Elements which are referenced by the Root element or one of its children are actually considered part of the Datamodel.
         /// </summary>
-        public ElementList AllElements { get; protected set; }
+        public ElementList AllElements
+        {
+            get; protected set;
+        }
         #endregion
 
         #region Element handling
@@ -709,8 +787,12 @@ namespace Datamodel
         /// <seealso cref="Element.ID"/>
         public Element ImportElement(Element foreign_element, ImportRecursionMode import_mode, ImportOverwriteMode overwrite_mode)
         {
-            if (foreign_element == null) throw new ArgumentNullException("element");
-            if (foreign_element.Owner == this) throw new ElementOwnershipException("Element is already a part of this Datamodel.");
+            ArgumentNullException.ThrowIfNull(foreign_element);
+
+            if (foreign_element.Owner == this)
+            {
+                throw new ElementOwnershipException("Element is already a part of this Datamodel.");
+            }
 
             return ImportElement_internal(foreign_element, new ImportJob(import_mode, overwrite_mode));
         }
@@ -747,12 +829,24 @@ namespace Datamodel
             All,
         }
 
-        struct ImportJob
+        private struct ImportJob
         {
-            public ImportRecursionMode ImportMode { get; private set; }
-            public ImportOverwriteMode OverwriteMode { get; private set; }
-            public Dictionary<Element, Element> ImportMap { get; private set; }
-            public int Depth { get; set; }
+            public ImportRecursionMode ImportMode
+            {
+                get; private set;
+            }
+            public ImportOverwriteMode OverwriteMode
+            {
+                get; private set;
+            }
+            public Dictionary<Element, Element> ImportMap
+            {
+                get; private set;
+            }
+            public int Depth
+            {
+                get; set;
+            }
 
             public ImportJob(ImportRecursionMode import_mode, ImportOverwriteMode overwrite_mode)
                 : this()
@@ -763,7 +857,7 @@ namespace Datamodel
             }
         }
 
-        object CopyValue(object value, ImportJob job)
+        private object CopyValue(object value, ImportJob job)
         {
             if (value == null) return null;
             var attr_type = value.GetType();
@@ -777,7 +871,7 @@ namespace Datamodel
             {
                 var foreign_element = (Element)value;
                 var local_element = AllElements[foreign_element.ID];
-                Element best_element = null;
+                Element best_element;
 
                 if (local_element != null && !local_element.Stub)
                     best_element = local_element;
@@ -803,7 +897,7 @@ namespace Datamodel
             else throw new ArgumentException("CopyValue: unhandled type.");
         }
 
-        Element ImportElement_internal(Element foreign_element, ImportJob job)
+        private Element ImportElement_internal(Element foreign_element, ImportJob job)
         {
             if (foreign_element == null) return null;
             if (foreign_element.Owner == this) return foreign_element;
@@ -822,12 +916,10 @@ namespace Datamodel
                     foreign_element.Owner = this;
                     foreach (var attr in foreign_element)
                     {
-                        var elem = attr.Value as Element;
-                        if (elem != null)
+                        if (attr.Value is Element elem)
                             foreign_element[attr.Key] = ImportElement_internal(elem, job);
 
-                        var elem_array = attr.Value as ElementArray;
-                        if (elem_array != null)
+                        if (attr.Value is ElementArray elem_array)
                         {
                             elem_array.Owner = foreign_element;
                             for (int i = 0; i < elem_array.Count; i++)
@@ -923,8 +1015,13 @@ namespace Datamodel
                 throw new InvalidOperationException("Random IDs are not allowed in this Datamodel.");
 
             Guid id;
-            do { id = Guid.NewGuid(); }
+
+            do
+            {
+                id = Guid.NewGuid();
+            }
             while (AllElements[id] != null);
+
             return CreateElement(name, id, class_name);
         }
 
@@ -980,12 +1077,14 @@ namespace Datamodel
     {
         public AttributeTypeException(string message)
             : base(message)
-        { }
+        {
+        }
 
         [SecuritySafeCritical]
         protected AttributeTypeException(SerializationInfo info, StreamingContext context)
             : base(info, context)
-        { }
+        {
+        }
     }
 
     /// <summary>
@@ -996,12 +1095,14 @@ namespace Datamodel
     {
         internal ElementIdException(string message)
             : base(message)
-        { }
+        {
+        }
 
         [SecuritySafeCritical]
         protected ElementIdException(SerializationInfo info, StreamingContext context)
             : base(info, context)
-        { }
+        {
+        }
     }
 
     /// <summary>
@@ -1012,16 +1113,19 @@ namespace Datamodel
     {
         internal ElementOwnershipException(string message)
             : base(message)
-        { }
+        {
+        }
 
         internal ElementOwnershipException()
             : base("Cannot add an Element from a different Datamodel. Use ImportElement() first.")
-        { }
+        {
+        }
 
         [SecuritySafeCritical]
         protected ElementOwnershipException(SerializationInfo info, StreamingContext context)
             : base(info, context)
-        { }
+        {
+        }
     }
 
     /// <summary>
@@ -1032,16 +1136,19 @@ namespace Datamodel
     {
         public CodecException(string message)
             : base(message)
-        { }
+        {
+        }
 
         public CodecException(string message, Exception innerException)
             : base(message, innerException)
-        { }
+        {
+        }
 
         [SecuritySafeCritical]
         protected CodecException(SerializationInfo info, StreamingContext context)
             : base(info, context)
-        { }
+        {
+        }
     }
 
     /// <summary>
@@ -1067,7 +1174,8 @@ namespace Datamodel
         [SecuritySafeCritical]
         protected DestubException(SerializationInfo info, StreamingContext context)
             : base(info, context)
-        { }
+        {
+        }
     }
 
     #endregion

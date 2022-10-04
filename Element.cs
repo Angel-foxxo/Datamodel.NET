@@ -32,9 +32,9 @@ namespace Datamodel
         public Element(Datamodel owner, string name, Guid? id = null, string class_name = "DmElement")
             : base(owner)
         {
-            if (owner == null) throw new ArgumentNullException("owner");
-            if (class_name == null) throw new ArgumentNullException("class_name");
-
+            ArgumentNullException.ThrowIfNull(owner);
+            ArgumentNullException.ThrowIfNull(class_name);
+            
             Name = name;
             ClassName = class_name;
 
@@ -57,7 +57,7 @@ namespace Datamodel
         public Element(Datamodel owner, Guid id)
             : base(owner)
         {
-            if (owner == null) throw new ArgumentNullException("owner");
+            ArgumentNullException.ThrowIfNull(owner);
 
             _ID = id;
             Stub = true;
@@ -82,8 +82,10 @@ namespace Datamodel
 
         void ISupportInitialize.EndInit()
         {
-            if (ID == null)
+            if (ID == default(Guid))
+            {
                 ID = Guid.NewGuid();
+            }
 
             Initialising = false;
         }
@@ -97,7 +99,7 @@ namespace Datamodel
         /// </summary>
         public Guid ID
         {
-            get { return _ID; }
+            get => _ID;
             set
             {
                 if (!Initialising && value != _ID) throw new InvalidOperationException("ID can only be changed during initialisation.");
@@ -111,8 +113,11 @@ namespace Datamodel
         /// </summary>
         public string Name
         {
-            get { return _Name; }
-            set { _Name = value; OnPropertyChanged(); }
+            get => _Name;
+            set
+            {
+                _Name = value; OnPropertyChanged();
+            }
         }
         string _Name;
 
@@ -122,8 +127,11 @@ namespace Datamodel
         [DefaultValue("DmeElement")]
         public string ClassName
         {
-            get { return _ClassName; }
-            set { _ClassName = value; OnPropertyChanged(); }
+            get => _ClassName;
+            set
+            {
+                _ClassName = value; OnPropertyChanged();
+            }
         }
         string _ClassName = "DmeElement";
 
@@ -133,7 +141,7 @@ namespace Datamodel
         /// <remarks>A Stub element does (or did) exist, but is not defined in this Element's <see cref="Datamodel"/>. Only its <see cref="ID"/> is known.</remarks>
         public bool Stub
         {
-            get { return _Stub; }
+            get => _Stub;
             set
             {
                 if (value && Count > 0) throw new InvalidOperationException("An Element containing Attributes cannot be a Stub.");
@@ -147,7 +155,7 @@ namespace Datamodel
         /// </summary>
         public new Datamodel Owner
         {
-            get { return base.Owner; }
+            get => base.Owner;
             internal set
             {
                 if (value != null && base.Owner != null && base.Owner.AllElements.Contains(this)) throw new InvalidOperationException("Element already has an owner.");
@@ -181,8 +189,8 @@ namespace Datamodel
         {
             object value = this[name];
 
-            if (!(value is T) && !(typeof(T) == typeof(Element) && value == null))
-                throw new AttributeTypeException(String.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value.GetType().Name, typeof(T).Name));
+            if (value is not T && !(typeof(T) == typeof(Element) && value == null))
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value.GetType().Name, typeof(T).Name));
 
             return (T)value;
         }
@@ -205,7 +213,7 @@ namespace Datamodel
             }
             catch (AttributeTypeException)
             {
-                throw new AttributeTypeException(String.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name].GetType().Name));
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name].GetType().Name));
             }
 
         }
@@ -243,7 +251,7 @@ namespace Datamodel
 
         public override string ToString()
         {
-            return String.Format("{0}[{1}]", Name, ClassName);
+            return string.Format("{0}[{1}]", Name, ClassName);
         }
 
         #region IEqualityComparer
@@ -371,11 +379,10 @@ namespace Datamodel
             {
                 Guid guid_value;
 
-                var str_value = value as string;
-                if (str_value != null)
+                if (value is string str_value)
                     guid_value = Guid.Parse(str_value);
-                else if (value is Guid)
-                    guid_value = (Guid)value;
+                else if (value is Guid guid)
+                    guid_value = guid;
                 else
                     return base.ConvertFrom(context, culture, value);
 
@@ -394,10 +401,7 @@ namespace Datamodel
             {
                 if (value is Guid)
                     return true;
-
-                var str_value = value as string;
-                Guid guid;
-                if (str_value != null && Guid.TryParse(str_value, out guid))
+                if (value is string str_value && Guid.TryParse(str_value, out _))
                     return true;
                 return false;
             }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -12,16 +13,19 @@ namespace Datamodel_Tests
 {
     public class DatamodelTests
     {
-        protected FileStream Binary_9_File = System.IO.File.OpenRead(@"Resources\overboss_run.dmx");
-        protected FileStream Binary_5_File = System.IO.File.OpenRead(@"Resources\taunt05_b5.dmx");
-        protected FileStream Binary_4_File = System.IO.File.OpenRead(@"Resources\binary4.dmx");
-        protected FileStream KeyValues2_1_File = System.IO.File.OpenRead(@"Resources\taunt05.dmx");
-        protected FileStream Xaml_File = System.IO.File.OpenRead(@"Resources\xaml_dm.xaml");
+        protected FileStream Binary_9_File = File.OpenRead(@"Resources\overboss_run.dmx");
+        protected FileStream Binary_5_File = File.OpenRead(@"Resources\taunt05_b5.dmx");
+        protected FileStream Binary_4_File = File.OpenRead(@"Resources\binary4.dmx");
+        protected FileStream KeyValues2_1_File = File.OpenRead(@"Resources\taunt05.dmx");
+
+        const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/sbox/bin/win64";
+        static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
+        static readonly bool DmxConvertExe_Exists = File.Exists(DmxConvertExe);
 
         static DatamodelTests()
         {
             var binary = new byte[16];
-            new Random().NextBytes(binary);
+            Random.Shared.NextBytes(binary);
             var quat = Quaternion.Normalize(new Quaternion(1, 2, 3, 4)); // dmxconvert will normalise this if I don't!
 
             TestValues_V1 = new List<object>(new object[] { "hello_world", 1, 1.5f, true, binary, null, System.Drawing.Color.Blue,
@@ -33,21 +37,19 @@ namespace Datamodel_Tests
             TestValues_V3 = TestValues_V1.Concat(new object[] { (byte)0xFF, (UInt64)0xFFFFFFFF }).ToList();
         }
 
-        private TestContext testContextInstance;
-        public TestContext TestContext
-        {
-            get { return testContextInstance; }
-            set { testContextInstance = value; }
-        }
+        public TestContext TestContext { get; set; }
 
-        protected string OutPath { get { return System.IO.Path.Combine(TestContext.TestResultsDirectory, TestContext.TestName); } }
+        protected string OutPath => Path.Combine(TestContext.TestResultsDirectory, TestContext.TestName);
         protected string DmxSavePath { get { return OutPath + ".dmx"; } }
         protected string DmxConvertPath { get { return OutPath + "_convert.dmx"; } }
 
         protected void Cleanup()
         {
-            System.IO.File.Delete(DmxSavePath);
-            System.IO.File.Delete(DmxConvertPath);
+            File.Delete(DmxSavePath);
+            if (DmxConvertExe_Exists)
+            {
+                File.Delete(DmxConvertPath);
+            }
         }
 
         protected static DM MakeDatamodel()
@@ -55,26 +57,30 @@ namespace Datamodel_Tests
             return new DM("model", 1); // using "model" to keep dxmconvert happy
         }
 
-        protected void SaveAndConvert(Datamodel.Datamodel dm, string encoding, int version)
+        protected bool SaveAndConvert(Datamodel.Datamodel dm, string encoding, int version)
         {
             dm.Save(DmxSavePath, encoding, version);
 
-            var dmxconvert = new System.Diagnostics.Process();
-            dmxconvert.StartInfo = new System.Diagnostics.ProcessStartInfo()
+            if (!DmxConvertExe_Exists)
             {
-                FileName = System.IO.Path.Combine(Properties.Resources.ValveSourceBinaries, "dmxconvert.exe"),
-                Arguments = String.Format("-i \"{0}\" -o \"{1}\" -oe {2}", DmxSavePath, DmxConvertPath, encoding),
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                return false;
+            }
+
+            var dmxconvert = new Process()
+            {
+                StartInfo = new ProcessStartInfo()
+                {
+                    FileName = DmxConvertExe,
+                    Arguments = String.Format("-i \"{0}\" -o \"{1}\" -oe {2}", DmxSavePath, DmxConvertPath, encoding),
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                }
             };
 
             Console.WriteLine(String.Join(" ", dmxconvert.StartInfo.FileName, dmxconvert.StartInfo.Arguments));
-            Assert.IsTrue(File.Exists(dmxconvert.StartInfo.FileName), String.Format("Could not find dmxconvert at {0}", dmxconvert.StartInfo.FileName));
-            
-            Console.WriteLine();
-            
+
             dmxconvert.Start();
             var err = dmxconvert.StandardOutput.ReadToEnd();
             err += dmxconvert.StandardError.ReadToEnd();
@@ -85,16 +91,17 @@ namespace Datamodel_Tests
             if (dmxconvert.ExitCode != 0)
                 throw new AssertFailedException(err);
 
+            return true;
         }
 
         /// <summary>
         /// Perform a parallel loop over all elements and attributes
         /// </summary>
-        protected void PrintContents(Datamodel.Datamodel dm)
+        protected static void PrintContents(DM dm)
         {
             System.Threading.Tasks.Parallel.ForEach<Datamodel.Element>(dm.AllElements, e =>
             {
-                System.Threading.Tasks.Parallel.ForEach(e, a => { ; });
+                System.Threading.Tasks.Parallel.ForEach(e, a => {; });
             });
         }
 
@@ -200,8 +207,10 @@ namespace Datamodel_Tests
             else
             {
                 dm.Save(DmxSavePath, encoding, version);
-                SaveAndConvert(dm, encoding, version);
-                ValidatePopulated(encoding, version);
+                if (SaveAndConvert(dm, encoding, version))
+                {
+                    ValidatePopulated(encoding, version);
+                }
                 Cleanup();
             }
 
@@ -319,14 +328,6 @@ namespace Datamodel_Tests
 
             SaveAndConvert(dm, "keyvalues2", 4);
             SaveAndConvert(dm, "binary", 9);
-        }
-
-        [TestMethod]
-        public void LoadXaml()
-        {
-            var dm = System.Windows.Markup.XamlReader.Load(Xaml_File) as DM;
-            Assert.AreSame(dm.Root.GetArray<Element>("NonStubArray")[0].GetArray<Element>("StubArray")[0], dm.Root.Get<Element>("NonStub"));
-            Assert.AreEqual(dm.Root.Get<Element>("NonStub").Get<Vector2>("Vec2"), new Vector2(1, 1));
         }
     }
 

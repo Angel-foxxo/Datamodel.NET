@@ -33,12 +33,15 @@ namespace Datamodel
 
         public virtual AttributeList Owner
         {
-            get { return _Owner; }
-            internal set { _Owner = value; OnPropertyChanged(); }
+            get => _Owner;
+            internal set
+            {
+                _Owner = value; OnPropertyChanged();
+            }
         }
         AttributeList _Owner;
 
-        protected Datamodel OwnerDatamodel { get { return Owner == null ? null : Owner.Owner; } }
+        protected Datamodel OwnerDatamodel => Owner?.Owner;
 
         internal Array()
         {
@@ -353,10 +356,7 @@ namespace Datamodel
 
         public override AttributeList Owner
         {
-            get
-            {
-                return base.Owner;
-            }
+            get => base.Owner;
             internal set
             {
                 RWLock.EnterUpgradeableReadLock();
@@ -439,10 +439,7 @@ namespace Datamodel
                     RWLock.ExitUpgradeableReadLock();
                 }
             }
-            set
-            {
-                base[index] = value;
-            }
+            set => base[index] = value;
         }
     }
 

@@ -6,6 +6,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
 	<UseWPF>true</UseWPF>
+    <NoWarn>IDE0018</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DocumentationFile>
@@ -26,13 +27,14 @@
     <DelaySign>false</DelaySign>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Numerics" />
     <Compile Remove="DmxPad\**" />
     <EmbeddedResource Remove="DmxPad\**" />
     <None Remove="DmxPad\**" />
     <Page Remove="DmxPad\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Tests\Properties\AssemblyInfo.cs" />
+    <Compile Remove="Tests\Tests.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Tests\Properties\AssemblyInfo.cs" />
