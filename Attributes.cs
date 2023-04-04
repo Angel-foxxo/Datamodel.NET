@@ -24,7 +24,7 @@ namespace Datamodel
         /// <param name="value">The value of the Attribute, which must be of a supported Datamodel type.</param>
         public Attribute(string name, AttributeList owner, object value)
         {
-            ArgumentNullException.ThrowIfNull(name); 
+            ArgumentNullException.ThrowIfNull(name);
 
             Name = name;
             _Owner = owner;

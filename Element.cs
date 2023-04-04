@@ -29,14 +29,13 @@ namespace Datamodel
         /// <param name="name">An arbitrary string. Does not have to be unique, and can be null.</param>
         /// <param name="class_name">An arbitrary string which loosely defines the type of Element this is. Cannot be null.</param>
         /// <exception cref="IndexOutOfRangeException">Thrown when the owner already contains the maximum number of Elements allowed in a Datamodel.</exception>
-        public Element(Datamodel owner, string name, Guid? id = null, string class_name = "DmElement")
+        public Element(Datamodel owner, string name, Guid? id = null, string classNameOverride = null)
             : base(owner)
         {
             ArgumentNullException.ThrowIfNull(owner);
-            ArgumentNullException.ThrowIfNull(class_name);
-            
+
             Name = name;
-            ClassName = class_name;
+            ClassName = classNameOverride ?? GetType().Name;
 
             if (id.HasValue)
                 _ID = id.Value;
