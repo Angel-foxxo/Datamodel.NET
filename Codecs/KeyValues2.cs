@@ -312,7 +312,7 @@ namespace Datamodel.Codecs
 
             Users = new Dictionary<Element, int>();
 
-            if (EncodingVersion >= 9 && dm.PrefixAttributes.Count > 0)
+            if (EncodingVersion >= 4 && dm.PrefixAttributes.Count > 0)
             {
                 Writer.WriteTokens("$prefix_element$");
                 Writer.WriteLine("{");
@@ -321,6 +321,7 @@ namespace Datamodel.Codecs
                     WriteAttribute(attr.Key, attr.Value.GetType(), attr.Value, false);
                 Writer.Indent--;
                 Writer.WriteLine("}");
+                Writer.WriteLine();
             }
 
             CountUsers(dm.Root);
