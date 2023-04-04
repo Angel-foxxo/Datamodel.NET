@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
+using System.Text;
 
 namespace Datamodel_Tests
 {
@@ -234,6 +235,34 @@ namespace Datamodel_Tests
     [TestFixture]
     public class Functionality : DatamodelTests
     {
+        [Test]
+        public void Create_Datamodel_Vmap()
+        {
+            using var datamodel = new DM("vmap", 29);
+            datamodel.PrefixAttributes.Add("map_asset_references", new List<string>());
+            datamodel.Root = new Element(datamodel, "root", classNameOverride: "CMapRoot")
+            {
+                ["isprefab"] = false,
+                ["showgrid"] = true,
+                ["snaprotationangle"] = 15,
+                ["gridspacing"] = 64,
+                ["show3dgrid"] = true,
+                ["itemFile"] = true,
+                ["world"] = new Element(datamodel, "world", classNameOverride: "CMapWorld"),
+            };
+
+            using var stream = new MemoryStream();
+            datamodel.Save(stream, "keyvalues2", 4);
+            Assert.That(stream.Length, Is.GreaterThan(0));
+
+            using var actual = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "vmaptest1.dmx"));
+
+            //Assert.That(actual.PrefixAttributes.ContainsKey("map_asset_references"), Is.True);
+            //Assert.That(actual.PrefixAttributes["map_asset_references"], Is.Empty);
+            Assert.That(actual.Root, Is.Not.Null);
+            Assert.That(actual.Root["world"], Is.Not.Null);
+            Assert.That(actual.Root["world"], Is.EqualTo(datamodel.Root["world"]));
+        }
 
         [Test]
         public void Create_Binary_9()

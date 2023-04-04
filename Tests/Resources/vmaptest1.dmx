@@ -1,0 +1,21 @@
+<!-- dmx encoding keyvalues2 4 format vmap 29 -->
+"$prefix_element$"
+{
+	"map_asset_references" "string_array" [ ]
+}
+"CMapRoot"
+{
+	"id" "elementid" "19f231ba-3ad6-4d36-b9d3-b3ae84c4fb69"
+	"name" "string" "root"
+	"isprefab" "bool" "0"
+	"showgrid" "bool" "1"
+	"snaprotationangle" "int" "15"
+	"gridspacing" "int" "64"
+	"show3dgrid" "bool" "1"
+	"itemFile" "bool" "1"
+	"world" "CMapWorld"
+	{
+		"id" "elementid" "3405a56b-2a71-48f6-8128-e9c82446b712"
+		"name" "string" "world"
+	}
+}
