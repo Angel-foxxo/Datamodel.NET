@@ -46,7 +46,10 @@ namespace Datamodel_Tests
         protected static string[] GetDmxFiles()
         {
             var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources");
-            return Directory.GetFiles(path, "*.dmx");
+            return Enumerable.Concat(
+                Directory.GetFiles(path, "*.dmx"),
+                Directory.GetFiles(path, "*.vmap")
+            ).ToArray();
         }
 
         protected static void Cleanup()
