@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
@@ -37,13 +37,19 @@ namespace Datamodel_Tests
             TestValues_V3 = TestValues_V1.Concat(new object[] { (byte)0xFF, (UInt64)0xFFFFFFFF }).ToList();
         }
 
-        public TestContext TestContext { get; set; }
 
-        protected string OutPath => Path.Combine(TestContext.TestResultsDirectory, TestContext.TestName);
-        protected string DmxSavePath { get { return OutPath + ".dmx"; } }
-        protected string DmxConvertPath { get { return OutPath + "_convert.dmx"; } }
+        protected static string OutPath
+            => Path.Combine(TestContext.CurrentContext.TestDirectory, TestContext.CurrentContext.Test.Name);
+        protected static string DmxSavePath { get { return OutPath + ".dmx"; } }
+        protected static string DmxConvertPath { get { return OutPath + "_convert.dmx"; } }
 
-        protected void Cleanup()
+        protected static string[] GetDmxFiles()
+        {
+            var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources");
+            return Directory.GetFiles(path, "*.dmx");
+        }
+
+        protected static void Cleanup()
         {
             File.Delete(DmxSavePath);
             if (DmxConvertExe_Exists)
@@ -57,12 +63,13 @@ namespace Datamodel_Tests
             return new DM("model", 1); // using "model" to keep dxmconvert happy
         }
 
-        protected bool SaveAndConvert(Datamodel.Datamodel dm, string encoding, int version)
+        protected static bool SaveAndConvert(DM datamodel, string encoding, int version)
         {
-            dm.Save(DmxSavePath, encoding, version);
+            datamodel.Save(DmxSavePath, encoding, version);
 
             if (!DmxConvertExe_Exists)
             {
+                Assert.Warn("dmxconvert.exe not available.");
                 return false;
             }
 
@@ -71,7 +78,7 @@ namespace Datamodel_Tests
                 StartInfo = new ProcessStartInfo()
                 {
                     FileName = DmxConvertExe,
-                    Arguments = String.Format("-i \"{0}\" -o \"{1}\" -oe {2}", DmxSavePath, DmxConvertPath, encoding),
+                    Arguments = string.Format("-i \"{0}\" -o \"{1}\" -oe {2}", DmxSavePath, DmxConvertPath, encoding),
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
@@ -79,17 +86,14 @@ namespace Datamodel_Tests
                 }
             };
 
-            Console.WriteLine(String.Join(" ", dmxconvert.StartInfo.FileName, dmxconvert.StartInfo.Arguments));
+            Console.WriteLine($"Converting {TestContext.CurrentContext.Test.Name}.dmx to {encoding}");
 
             dmxconvert.Start();
             var err = dmxconvert.StandardOutput.ReadToEnd();
             err += dmxconvert.StandardError.ReadToEnd();
             dmxconvert.WaitForExit();
 
-            Console.WriteLine(err);
-
-            if (dmxconvert.ExitCode != 0)
-                throw new AssertFailedException(err);
+            Assert.That(dmxconvert.ExitCode, Is.Zero, $"dmxconvert failed to convert the file with error: {err}");
 
             return true;
         }
@@ -99,16 +103,16 @@ namespace Datamodel_Tests
         /// </summary>
         protected static void PrintContents(DM dm)
         {
-            System.Threading.Tasks.Parallel.ForEach<Datamodel.Element>(dm.AllElements, e =>
+            System.Threading.Tasks.Parallel.ForEach(dm.AllElements, e =>
             {
                 System.Threading.Tasks.Parallel.ForEach(e, a => {; });
             });
         }
 
-        protected static List<object> TestValues_V1;
-        protected static List<object> TestValues_V2;
-        protected static List<object> TestValues_V3;
-        protected static Guid RootGuid = Guid.NewGuid();
+        protected static List<object> TestValues_V1 { get; }
+        protected static List<object> TestValues_V2 { get; }
+        protected static List<object> TestValues_V3 { get; }
+        protected static Guid RootGuid { get; } = Guid.NewGuid();
 
         protected static List<object> AttributeValuesFor(string encoding_name, int encoding_version)
         {
@@ -215,53 +219,53 @@ namespace Datamodel_Tests
             }
 
             dm.AllElements.Remove(dm.Root.GetArray<Element>("ElemArray")[3], DM.ElementList.RemoveMode.MakeStubs);
-            Assert.AreEqual<bool>(true, dm.Root.GetArray<Element>("ElemArray")[3].Stub);
+            Assert.AreEqual(true, dm.Root.GetArray<Element>("ElemArray")[3].Stub);
 
             dm.AllElements.Remove(dm.Root, DM.ElementList.RemoveMode.MakeStubs);
-            Assert.AreEqual<bool>(true, dm.Root.Stub);
+            Assert.AreEqual(true, dm.Root.Stub);
 
             return dm;
         }
     }
 
-    [TestClass]
+    [TestFixture]
     public class Functionality : DatamodelTests
     {
 
-        [TestMethod]
+        [Test]
         public void Create_Binary_9()
         {
             Create("binary", 9);
         }
-        [TestMethod]
+        [Test]
         public void Create_Binary_5()
         {
             Create("binary", 5);
         }
-        [TestMethod]
+        [Test]
         public void Create_Binary_4()
         {
             Create("binary", 4);
         }
-        [TestMethod]
+        [Test]
         public void Create_Binary_3()
         {
             Create("binary", 3);
         }
-        [TestMethod]
+        [Test]
         public void Create_Binary_2()
         {
             Create("binary", 2);
         }
 
-        [TestMethod]
+        [Test]
         public void Create_KeyValues2_4()
         {
             Create("keyvalues2", 4);
         }
 
 
-        [TestMethod]
+        [Test]
         public void Create_KeyValues2_1()
         {
             Create("keyvalues2", 1);
@@ -273,7 +277,7 @@ namespace Datamodel_Tests
             dm.FormatVersion = 22; // otherwise recent versions of dmxconvert fail
         }
 
-        [TestMethod]
+        [Test]
         public void Dota2_Binary_9()
         {
             var dm = DM.Load(Binary_9_File);
@@ -284,7 +288,7 @@ namespace Datamodel_Tests
             Cleanup();
         }
 
-        [TestMethod]
+        [Test]
         public void TF2_Binary_5()
         {
             var dm = DM.Load(Binary_5_File);
@@ -295,7 +299,7 @@ namespace Datamodel_Tests
             Cleanup();
         }
 
-        [TestMethod]
+        [Test]
         public void TF2_Binary_4()
         {
             var dm = DM.Load(Binary_4_File);
@@ -306,7 +310,7 @@ namespace Datamodel_Tests
             Cleanup();
         }
 
-        [TestMethod]
+        [Test]
         public void TF2_KeyValues2_1()
         {
             var dm = DM.Load(KeyValues2_1_File);
@@ -317,7 +321,16 @@ namespace Datamodel_Tests
             Cleanup();
         }
 
-        [TestMethod]
+        [Test, TestCaseSource(nameof(GetDmxFiles))]
+        public void Load(string path)
+        {
+            var dm = DM.Load(path);
+            PrintContents(dm);
+            dm.Dispose();
+        }
+
+
+        [Test]
         public void Import()
         {
             var dm = MakeDatamodel();
@@ -331,11 +344,11 @@ namespace Datamodel_Tests
         }
     }
 
-    [TestClass]
+    [TestFixture, Category("Performance")]
     public class Performance : DatamodelTests
     {
         const int Load_Iterations = 10;
-        System.Diagnostics.Stopwatch Timer = new System.Diagnostics.Stopwatch();
+        readonly Stopwatch Timer = new();
 
         void Load(FileStream f)
         {
@@ -346,7 +359,7 @@ namespace Datamodel_Tests
                 DM.Load(f, Datamodel.Codecs.DeferredMode.Disabled);
                 if (i > 0)
                 {
-                    Console.WriteLine(Timer.ElapsedMilliseconds);
+                    Console.Write(Timer.ElapsedMilliseconds + ", ");
                     elapsed += Timer.ElapsedMilliseconds;
                 }
                 Timer.Restart();
@@ -354,26 +367,27 @@ namespace Datamodel_Tests
             Timer.Stop();
             Console.WriteLine("Average: {0}ms", elapsed / Load_Iterations);
         }
-        [TestMethod]
+
+        [Test]
         public void Perf_Load_Binary5()
         {
             Load(Binary_5_File);
         }
 
-        [TestMethod]
+        [Test]
         public void Perf_Load_KeyValues2_1()
         {
             Load(KeyValues2_1_File);
         }
 
-        [TestMethod]
+        [Test]
         public void Perf_Create_Binary5()
         {
             foreach (var i in Enumerable.Range(0, 1000))
                 Create("binary", 5, true);
         }
 
-        [TestMethod]
+        [Test]
         public void Perf_CreateElements_Binary5()
         {
             var dm = MakeDatamodel();
@@ -389,7 +403,7 @@ namespace Datamodel_Tests
             Cleanup();
         }
 
-        [TestMethod]
+        [Test]
         public void Perf_CreateAttributes_Binary5()
         {
             var dm = MakeDatamodel();
@@ -416,7 +430,7 @@ namespace Datamodel_Tests
     {
         public static Type MakeListType(this Type t)
         {
-            return typeof(System.Collections.Generic.List<>).MakeGenericType(t);
+            return typeof(List<>).MakeGenericType(t);
         }
     }
 }
