@@ -13,10 +13,10 @@ namespace Datamodel_Tests
 {
     public class DatamodelTests
     {
-        protected FileStream Binary_9_File = File.OpenRead(@"Resources\overboss_run.dmx");
-        protected FileStream Binary_5_File = File.OpenRead(@"Resources\taunt05_b5.dmx");
-        protected FileStream Binary_4_File = File.OpenRead(@"Resources\binary4.dmx");
-        protected FileStream KeyValues2_1_File = File.OpenRead(@"Resources\taunt05.dmx");
+        protected FileStream Binary_9_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/overboss_run.dmx");
+        protected FileStream Binary_5_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05_b5.dmx");
+        protected FileStream Binary_4_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/binary4.dmx");
+        protected FileStream KeyValues2_1_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05.dmx");
 
         const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/sbox/bin/win64";
         static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
