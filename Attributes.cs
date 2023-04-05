@@ -248,13 +248,13 @@ namespace Datamodel
         internal OrderedDictionary Inner;
         protected object Attribute_ChangeLock = new();
 
-        private ICollection<Attribute> GetPropertyBasedAttributes(bool useSerializationNames)
+        private ICollection<Attribute> GetPropertyBasedAttributes(bool useSerializationName)
         {
             var result = new List<Attribute>();
             foreach (DictionaryEntry entry in PropertyInfos)
             {
                 var prop = (PropertyInfo)entry.Value;
-                var name = useSerializationNames ? (string)entry.Key : prop.Name;
+                var name = useSerializationName ? (string)entry.Key : prop.Name;
                 var attr = new Attribute(name, this, prop.GetValue(this));
                 result.Add(attr);
             }
@@ -272,7 +272,7 @@ namespace Datamodel
 
             [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
             public DebugAttribute[] Attributes
-                => Item.GetPropertyBasedAttributes(useSerializationNames: false).Select(attr => new DebugAttribute(attr))
+                => Item.GetPropertyBasedAttributes(useSerializationName: false).Select(attr => new DebugAttribute(attr))
                 .Concat(Item.Inner.Values.Cast<Attribute>().Select(attr => new DebugAttribute(attr)))
                 .ToArray();
 
@@ -574,7 +574,7 @@ namespace Datamodel
 
         public IEnumerable<AttrKVP> GetAllAttributesForSerialization()
         {
-            foreach (var attr in GetPropertyBasedAttributes(useSerializationNames: true))
+            foreach (var attr in GetPropertyBasedAttributes(useSerializationName: true))
                 yield return attr.ToKeyValuePair();
 
             foreach (var attr in this)
