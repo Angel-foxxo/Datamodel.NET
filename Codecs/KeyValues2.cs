@@ -39,6 +39,7 @@ namespace Datamodel.Codecs
 
             TypeNames[typeof(byte)] = "uint8";
             TypeNames[typeof(ulong)] = "uint64";
+            TypeNames[typeof(QAngle)] = "qangle";
 
             ValidAttributes[4] = TypeNames.Select(kv => kv.Key).ToArray();
         }
@@ -244,8 +245,8 @@ namespace Datamodel.Codecs
                     var c = (System.Drawing.Color)value;
                     value = String.Join(" ", new int[] { c.R, c.G, c.B, c.A });
                 }
-                else if (type == typeof(UInt64))
-                    value = ((UInt64)value).ToString("X");
+                else if (value is ulong ulong_value)
+                    value = $"0x{ulong_value:X}";
                 else if (type == typeof(Vector2))
                 {
                     var arr = new float[2];
@@ -275,6 +276,10 @@ namespace Datamodel.Codecs
                     var arr = new float[4 * 4];
                     var m = (Matrix4x4)value;
                     value = string.Join(" ", m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
+                }
+                else if (value is QAngle qangle_value)
+                {
+                    value = string.Join(" ", (int)qangle_value.Pitch, (int)qangle_value.Yaw, (int)qangle_value.Roll);
                 }
 
                 if (in_array)
@@ -327,6 +332,7 @@ namespace Datamodel.Codecs
                 Writer.WriteTokens("$prefix_element$");
                 Writer.WriteLine("{");
                 Writer.Indent++;
+                Writer.WriteTokenLine("id", "elementid", Guid.NewGuid().ToString());
                 foreach (var attr in dm.PrefixAttributes)
                     WriteAttribute(attr.Key, attr.Value.GetType(), attr.Value, false);
                 Writer.Indent--;

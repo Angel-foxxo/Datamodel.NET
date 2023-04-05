@@ -52,7 +52,8 @@ namespace Datamodel
             typeof(Quaternion),
             typeof(Matrix4x4),
             typeof(byte),
-            typeof(ulong)
+            typeof(ulong),
+            typeof(QAngle),
         };
 
         public static Type[] AttributeTypes => attributeTypes;
