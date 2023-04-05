@@ -65,7 +65,7 @@ namespace Datamodel
         /// <param name="t">The Type to check.</param>
         public static bool IsDatamodelType(Type t)
         {
-            return Datamodel.AttributeTypes.Contains(t) || IsDatamodelArrayType(t);
+            return Datamodel.AttributeTypes.Contains(t) || IsDatamodelArrayType(t) || t.IsSubclassOf(typeof(Element));
         }
 
         /// <summary>

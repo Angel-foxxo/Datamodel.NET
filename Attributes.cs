@@ -9,6 +9,7 @@ using System.Numerics;
 using System.Globalization;
 
 using AttrKVP = System.Collections.Generic.KeyValuePair<string, object>;
+using System.Reflection;
 
 namespace Datamodel
 {
@@ -103,7 +104,7 @@ namespace Datamodel
         }
         AttributeList _Owner;
 
-        Datamodel OwnerDatamodel { get { return Owner != null ? Owner.Owner : null; } }
+        Datamodel OwnerDatamodel { get { return Owner?.Owner; } }
 
         /// <summary>
         /// Gets whether the value of this Attribute has yet to be decoded.
@@ -135,8 +136,7 @@ namespace Datamodel
             }
             Offset = 0;
 
-            var elem_array = _Value as ElementArray;
-            if (elem_array != null)
+            if (_Value is ElementArray elem_array)
                 elem_array.Owner = Owner;
         }
 
@@ -155,8 +155,7 @@ namespace Datamodel
                 if (OwnerDatamodel != null)
                 {
                     // expand stubs
-                    var elem = _Value as Element;
-                    if (elem != null && elem.Stub)
+                    if (_Value is Element elem && elem.Stub)
                     {
                         try { _Value = OwnerDatamodel.OnStubRequest(elem.ID) ?? _Value; }
                         catch (Exception err) { throw new DestubException(this, err); }
@@ -172,8 +171,7 @@ namespace Datamodel
                 if (!Datamodel.IsDatamodelType(ValueType))
                     throw new AttributeTypeException(String.Format("{0} is not a valid Datamodel attribute type. (If this is an array, it must implement IList<T>).", ValueType.FullName));
 
-                var elem = value as Element;
-                if (elem != null)
+                if (value is Element elem)
                 {
                     if (elem.Owner == null)
                         elem.Owner = OwnerDatamodel;
@@ -181,10 +179,9 @@ namespace Datamodel
                         throw new ElementOwnershipException();
                 }
 
-                var elem_enumerable = value as IEnumerable<Element>;
-                if (elem_enumerable != null)
+                if (value is IEnumerable<Element> elem_enumerable)
                 {
-                    if (!(elem_enumerable is ElementArray))
+                    if (elem_enumerable is not ElementArray)
                         throw new InvalidOperationException("Element array objects must derive from Datamodel.ElementArray");
 
                     var elem_array = (ElementArray)value;
@@ -231,15 +228,38 @@ namespace Datamodel
         }
     }
 
+    class PropertyBasedAttribute : Attribute
+    {
+        public PropertyBasedAttribute(string name, AttributeList owner, object value)
+            : base(name, owner, value)
+        {
+
+        }
+    }
+
     /// <summary>
     /// A thread-safe collection of <see cref="Attribute"/>s.
     /// </summary>
     [DebuggerTypeProxy(typeof(DebugView))]
     [DebuggerDisplay("Count = {Count}")]
-    public partial class AttributeList : IDictionary<string, object>, IDictionary, INotifyCollectionChanged, ICustomTypeDescriptor
+    public class AttributeList : IDictionary<string, object>, IDictionary, INotifyCollectionChanged
     {
+        internal OrderedDictionary PropertyInfos;
         internal OrderedDictionary Inner;
-        protected object Attribute_ChangeLock = new object();
+        protected object Attribute_ChangeLock = new();
+
+        private ICollection<Attribute> GetPropertyBasedAttributes(bool useSerializationNames)
+        {
+            var result = new List<Attribute>();
+            foreach (DictionaryEntry entry in PropertyInfos)
+            {
+                var prop = (PropertyInfo)entry.Value;
+                var name = useSerializationNames ? (string)entry.Key : prop.Name;
+                var attr = new Attribute(name, this, prop.GetValue(this));
+                result.Add(attr);
+            }
+            return result;
+        }
 
         internal class DebugView
         {
@@ -251,7 +271,10 @@ namespace Datamodel
             protected AttributeList Item;
 
             [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-            public DebugAttribute[] Attributes { get { return Item.Inner.Values.Cast<Attribute>().Select(attr => new DebugAttribute(attr)).ToArray(); } }
+            public DebugAttribute[] Attributes
+                => Item.GetPropertyBasedAttributes(useSerializationNames: false).Select(attr => new DebugAttribute(attr))
+                .Concat(Item.Inner.Values.Cast<Attribute>().Select(attr => new DebugAttribute(attr)))
+                .ToArray();
 
             [DebuggerDisplay("{Value}", Name = "{Attr.Name,nq}", Type = "{Attr.ValueType.FullName,nq}")]
             public class DebugAttribute
@@ -262,7 +285,7 @@ namespace Datamodel
                 }
 
                 [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                Attribute Attr;
+                readonly Attribute Attr;
 
                 [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
                 object Value { get { return Attr.Value; } }
@@ -286,6 +309,16 @@ namespace Datamodel
 
         public AttributeList(Datamodel owner)
         {
+            var propertyAttributes = GetPropertyDerivedAttributeList();
+            PropertyInfos = new OrderedDictionary(propertyAttributes?.Count ?? 0);
+            if (propertyAttributes != null)
+            {
+                foreach (var attr in propertyAttributes)
+                {
+                    PropertyInfos.Add(attr.Name, attr.Property);
+                }
+            }
+
             Inner = new OrderedDictionary();
             Owner = owner;
         }
@@ -303,6 +336,12 @@ namespace Datamodel
         public void Add(string key, object value)
         {
             this[key] = value;
+        }
+
+
+        protected virtual ICollection<(string Name, PropertyInfo Property)> GetPropertyDerivedAttributeList()
+        {
+            return null;
         }
 
         /// <summary>
@@ -406,7 +445,17 @@ namespace Datamodel
             {
                 ArgumentNullException.ThrowIfNull(name);
                 var attr = (Attribute)Inner[name];
-                if (attr == null) throw new KeyNotFoundException(String.Format("{0} does not have an attribute called \"{1}\"", this, name));
+                if (attr == null)
+                {
+                    var prop_attr = (PropertyInfo)PropertyInfos[name];
+                    if (prop_attr != null)
+                    {
+                        return prop_attr.GetValue(this);
+                    }
+
+                    throw new KeyNotFoundException($"{this} does not have an attribute called \"{name}\"");
+                }
+
                 return attr.Value;
             }
             set
@@ -417,6 +466,12 @@ namespace Datamodel
 
                 if (Owner != null && this == Owner.PrefixAttributes && value.GetType() == typeof(Element))
                     throw new AttributeTypeException("Elements are not supported as prefix attributes.");
+
+                var prop_attr = (PropertyInfo)PropertyInfos[name];
+                if (prop_attr != null)
+                {
+                    throw new InvalidOperationException($"Cannot set the value of a property-derived attribute by key. Assign to '{prop_attr.Name}' directly instead.");
+                }
 
                 Attribute old_attr;
                 Attribute new_attr;
@@ -517,6 +572,15 @@ namespace Datamodel
         /// </summary>
         public object SyncRoot { get { return Attribute_ChangeLock; } }
 
+        public IEnumerable<AttrKVP> GetAllAttributesForSerialization()
+        {
+            foreach (var attr in GetPropertyBasedAttributes(useSerializationNames: true))
+                yield return attr.ToKeyValuePair();
+
+            foreach (var attr in this)
+                yield return attr;
+        }
+
         public IEnumerator<AttrKVP> GetEnumerator()
         {
             foreach (var attr in Inner.Values.Cast<Attribute>().ToArray())
@@ -532,7 +596,8 @@ namespace Datamodel
 
 
         /// <summary>
-        /// Raised when <see cref="Element.Name"/>, <see cref="Element.ClassName"/>, or <see cref="Element.ID"/> has changed.
+        /// Raised when <see cref="Element.Name"/>, <see cref="Element.ClassName"/>, <see cref="Element.ID"/> or
+        /// a custom Element property has changed.
         /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName()] string property = "")
@@ -559,8 +624,7 @@ namespace Datamodel
 
             OnPropertyChanged("Item[]"); // this is the magic value of System.Windows.Data.Binding.IndexerName that tells the binding engine an indexer has changed
 
-            if (CollectionChanged != null)
-                CollectionChanged(this, e);
+            CollectionChanged?.Invoke(this, e);
         }
 
 
@@ -654,8 +718,7 @@ namespace Datamodel
         {
             get
             {
-                if (_Default == null)
-                    _Default = new ValueComparer();
+                _Default ??= new ValueComparer();
                 return _Default;
             }
         }
@@ -663,8 +726,8 @@ namespace Datamodel
 
         public new bool Equals(object x, object y)
         {
-            var type_x = x == null ? null : x.GetType();
-            var type_y = y == null ? null : y.GetType();
+            var type_x = x?.GetType();
+            var type_y = y?.GetType();
 
             if (type_x == null && type_y == null)
                 return true;
@@ -690,8 +753,7 @@ namespace Datamodel
 
         public int GetHashCode(object obj)
         {
-            var elem = obj as Element;
-            if (elem != null)
+            if (obj is Element elem)
                 return elem.ID.GetHashCode();
 
             var inner = Datamodel.GetArrayInnerType(obj.GetType());
@@ -755,8 +817,10 @@ namespace Datamodel
             get { return _Value; }
             private set
             {
-                var incc = _Value as INotifyCollectionChanged;
-                if (incc != null) incc.CollectionChanged -= OnValueCollectionChanged;
+                if (_Value is INotifyCollectionChanged incc)
+                {
+                    incc.CollectionChanged -= OnValueCollectionChanged;
+                }
 
                 _Value = value;
                 OnPropertyChanged();
@@ -828,7 +892,9 @@ namespace Datamodel
             int i = 0;
             foreach (var source_item in list)
             {
-                var output_attr = source_item is AttrKVP ? (AttrKVP)source_item : new AttrKVP(null, source_item);
+                var output_attr = source_item is AttrKVP pair
+                    ? pair
+                    : new AttrKVP(null, source_item);
                 ObservableAttribute output_item = null;
                 if (source_item != null && !WrappedAttributeMap.TryGetValue(output_attr, out output_item))
                 {
@@ -858,8 +924,8 @@ namespace Datamodel
                     wrapped_event = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, WrapEnumerable(e.OldItems).ToArray(), e.OldStartingIndex);
                     foreach (var item in e.OldItems)
                     {
-                        if (item is AttrKVP)
-                            WrappedAttributeMap.Remove((AttrKVP)item);
+                        if (item is AttrKVP pair)
+                            WrappedAttributeMap.Remove(pair);
                         else
                             WrappedAttributeMap.Remove(new AttrKVP(null, item));
                     }
@@ -892,8 +958,7 @@ namespace Datamodel
         public event NotifyCollectionChangedEventHandler CollectionChanged;
         protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
-            if (CollectionChanged != null)
-                CollectionChanged(this, e);
+            CollectionChanged?.Invoke(this, e);
         }
 
         public enum ArrayExpandMode
@@ -991,8 +1056,7 @@ namespace Datamodel
 
             public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
             {
-                var str_val = value as string;
-                if (str_val != null)
+                if (value is string str_val)
                 {
                     var ordinates = str_val.Split(new string[] { culture.NumberFormat.CurrencyGroupSeparator, " " }, StringSplitOptions.RemoveEmptyEntries).Select(s => float.Parse(s)).ToArray();
                     if (ordinates.Length != Size) throw new ArgumentException(string.Format("Expected {0} values, got {1}", Size, ordinates.Length));

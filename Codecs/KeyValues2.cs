@@ -130,28 +130,30 @@ namespace Datamodel.Codecs
         }
         int EncodingVersion;
 
-        Dictionary<Element, int> Users;
+        // Multi-referenced elements are written out as a separate block at the end of the file.
+        // In-line only the id is written.
+        Dictionary<Element, int> ReferenceCount;
 
-        void CountUsers(Element elem)
+        void CountReferences(Element elem)
         {
-            if (Users.ContainsKey(elem))
-                Users[elem]++;
+            if (ReferenceCount.ContainsKey(elem))
+                ReferenceCount[elem]++;
             else
             {
-                Users[elem] = 1;
-                foreach (var attr in elem)
+                ReferenceCount[elem] = 1;
+                foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     if (attr.Value == null)
                         continue;
 
                     if (attr.Value is Element child_elem)
                     {
-                        CountUsers(child_elem);
+                        CountReferences(child_elem);
                     }
                     else if (attr.Value is IEnumerable<Element> enumerable)
                     {
                         foreach (var array_elem in enumerable.Where(c => c != null))
-                            CountUsers(array_elem);
+                            CountReferences(array_elem);
                     }
                 }
             }
@@ -159,16 +161,19 @@ namespace Datamodel.Codecs
 
         void WriteAttribute(string name, Type type, object value, bool in_array)
         {
-            bool is_element = type == typeof(Element);
+            bool is_element = type == typeof(Element) || type.IsSubclassOf(typeof(Element));
 
             Type inner_type = null;
             if (!in_array)
             {
+                // TODO: subclass check in this method like above - and in all other places with == typeof(Element)
                 inner_type = Datamodel.GetArrayInnerType(type);
                 if (inner_type == typeof(byte) && !ValidAttributes[EncodingVersion].Contains(typeof(byte)))
                     inner_type = null; // fall back on the "binary" type in older KV2 versions
             }
-            if (!ValidAttributes[EncodingVersion].Contains(inner_type ?? type))
+
+            // Elements are supported by all.
+            if (!is_element && !ValidAttributes[EncodingVersion].Contains(inner_type ?? type))
                 throw new CodecException(type.Name + " is not valid in KeyValues2 " + EncodingVersion);
 
             if (inner_type != null)
@@ -204,7 +209,7 @@ namespace Datamodel.Codecs
 
                 if (in_array)
                 {
-                    if (elem != null && Users[elem] == 1)
+                    if (elem != null && ReferenceCount[elem] == 1)
                     {
                         Writer.WriteLine();
                         WriteElement(elem);
@@ -215,7 +220,7 @@ namespace Datamodel.Codecs
                 }
                 else
                 {
-                    if (elem != null && Users.ContainsKey(elem) && Users[elem] == 1)
+                    if (elem != null && ReferenceCount.ContainsKey(elem) && ReferenceCount[elem] == 1)
                     {
                         Writer.WriteLine(String.Format("\"{0}\" ", name));
                         WriteElement(elem);
@@ -288,9 +293,14 @@ namespace Datamodel.Codecs
             Writer.WriteLine("{");
             Writer.Indent++;
             Writer.WriteTokenLine("id", "elementid", element.ID.ToString());
-            Writer.WriteTokenLine("name", "string", element.Name);
 
-            foreach (var attr in element)
+            // Skip empty names right now.
+            if (!string.IsNullOrEmpty(element.Name))
+            {
+                Writer.WriteTokenLine("name", "string", element.Name);
+            }
+
+            foreach (var attr in element.GetAllAttributesForSerialization())
             {
                 if (attr.Value == null)
                     WriteAttribute(attr.Key, typeof(Element), null, false);
@@ -310,7 +320,7 @@ namespace Datamodel.Codecs
             Writer.Write(String.Format(CodecUtilities.HeaderPattern, "keyvalues2", encoding_version, dm.Format, dm.FormatVersion));
             Writer.WriteLine();
 
-            Users = new Dictionary<Element, int>();
+            ReferenceCount = new Dictionary<Element, int>();
 
             if (EncodingVersion >= 4 && dm.PrefixAttributes.Count > 0)
             {
@@ -324,11 +334,11 @@ namespace Datamodel.Codecs
                 Writer.WriteLine();
             }
 
-            CountUsers(dm.Root);
+            CountReferences(dm.Root);
             WriteElement(dm.Root);
             Writer.WriteLine();
 
-            foreach (var pair in Users.Where(pair => pair.Value > 1))
+            foreach (var pair in ReferenceCount.Where(pair => pair.Value > 1))
             {
                 if (pair.Key == dm.Root)
                     continue;

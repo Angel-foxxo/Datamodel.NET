@@ -163,7 +163,7 @@ namespace Datamodel.Codecs
 
                 Strings.Add(elem.Name);
                 Strings.Add(elem.ClassName);
-                foreach (var attr in elem)
+                foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     Strings.Add(attr.Key);
                     switch (attr.Value)
@@ -501,7 +501,7 @@ namespace Datamodel.Codecs
                 if (elem.Stub) return 0;
                 int num_elems = 1;
                 counted.Add(elem);
-                foreach (var attr in elem)
+                foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     if (attr.Value == null) continue;
 
@@ -531,7 +531,7 @@ namespace Datamodel.Codecs
                 else Writer.Write(elem.Name);
                 Writer.Write(elem.ID.ToByteArray());
 
-                foreach (var attr in elem)
+                foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     var child_elem = attr.Value as Element;
                     if (child_elem != null)
@@ -555,7 +555,7 @@ namespace Datamodel.Codecs
             void WriteBody(Element elem)
             {
                 Writer.Write(elem.Count);
-                foreach (var attr in elem)
+                foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     StringDict.WriteString(attr.Key);
                     var attr_type = attr.Value == null ? typeof(Element) : attr.Value.GetType();

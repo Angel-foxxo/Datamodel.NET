@@ -3,8 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
+using System.Reflection;
 
 namespace Datamodel
 {
@@ -13,7 +12,6 @@ namespace Datamodel
     /// </summary>
     /// <remarks>Recursion is allowed, i.e. an <see cref="Attribute"/> can refer to an <see cref="Element"/> which is higher up the tree.</remarks>
     /// <seealso cref="Attribute"/>
-    [DefaultProperty("Name")]
     [TypeConverter(typeof(TypeConverters.ElementConverter))]
     [DebuggerTypeProxy(typeof(AttributeList.DebugView))]
     [DebuggerDisplay("{Name} {ID}", Type = "{ClassName,nq}")]
@@ -35,7 +33,7 @@ namespace Datamodel
             ArgumentNullException.ThrowIfNull(owner);
 
             Name = name;
-            ClassName = classNameOverride ?? GetType().Name;
+            ClassName = classNameOverride ?? ClassName;
 
             if (id.HasValue)
                 _ID = id.Value;
@@ -71,6 +69,12 @@ namespace Datamodel
             : base(null)
         {
             _ID = Guid.NewGuid();
+
+            // For subclasses get the actual classname
+            if (GetType() != typeof(Element))
+            {
+                ClassName = GetType().Name;
+            }
         }
 
         bool Initialising = false;
@@ -81,7 +85,7 @@ namespace Datamodel
 
         void ISupportInitialize.EndInit()
         {
-            if (ID == default(Guid))
+            if (ID == default)
             {
                 ID = Guid.NewGuid();
             }
@@ -123,7 +127,6 @@ namespace Datamodel
         /// <summary>
         /// Gets or sets the class of this Element. This is a string which loosely defines what <see cref="Attribute"/>s the Element contains.
         /// </summary>
-        [DefaultValue("DmeElement")]
         public string ClassName
         {
             get => _ClassName;
@@ -173,6 +176,35 @@ namespace Datamodel
         }
 
         #endregion
+
+        #region Properties
+
+        protected override ICollection<(string Name, PropertyInfo Property)> GetPropertyDerivedAttributeList()
+        {
+            var type = GetType();
+            if (type == typeof(Element))
+            {
+                return null; // The base class has no auto-properties
+            }
+
+            var properties = new List<(string Name, PropertyInfo Property)>();
+            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                // Check if the property is an auto-property and is declared by a subclass of Element
+                if (property.GetIndexParameters().Length == 0 && property.DeclaringType.IsSubclassOf(typeof(Element)))
+                {
+                    var name = property.Name;
+                    name = property.DeclaringType.GetCustomAttribute<Format.AttributeNameConventionAttribute>()?.GetAttributeName(name) ?? name;
+                    name = property.GetCustomAttribute<Format.Attribute>()?.Name ?? name;
+
+                    properties.Add((name, property));
+                }
+            }
+
+            return properties;
+        }
+
+        #endregion Properties
 
         /// <summary>
         /// Returns the value of the <see cref="Attribute"/> with the specified type and name. An exception is thrown there is no Attribute of the given name and type.

@@ -264,6 +264,136 @@ namespace Datamodel_Tests
             Assert.That(actual.Root["world"], Is.EqualTo(datamodel.Root["world"]));
         }
 
+        public class NullOwnerElement
+        {
+            [Test]
+            public void ElementInitializes()
+            {
+                var elem = new Element();
+
+                Assert.That(elem.Owner, Is.Null);
+                Assert.That(elem.Count, Is.Zero);
+            }
+
+            [Test]
+            public void CanImportToRoot()
+            {
+                var elem = new Element();
+
+                var dm = new DM("test", 1);
+                dm.Root = elem;
+
+                Assert.That(elem.Owner, Is.EqualTo(dm));
+            }
+
+            [Test]
+            public void Nested_CanImportToRoot()
+            {
+                var elem = new Element();
+                var elem2 = new Element();
+                elem["elem2"] = elem2;
+                elem2["woah"] = 5;
+
+                Assert.That(elem.Owner, Is.Null);
+                Assert.That(elem.Count, Is.EqualTo(1));
+                Assert.That(elem2.Owner, Is.Null);
+                Assert.That(elem2.Count, Is.EqualTo(1));
+
+                Assert.That(elem.First().Key, Is.EqualTo("elem2"));
+                Assert.That(elem.First().Value, Is.EqualTo(elem2));
+                Assert.That(elem2.First().Key, Is.EqualTo("woah"));
+                Assert.That(elem2.First().Value, Is.EqualTo(5));
+
+                var dm = new DM("test", 1);
+                dm.Root = elem;
+
+                Assert.That(elem.Owner, Is.EqualTo(dm));
+                Assert.That(elem2.Owner, Is.EqualTo(dm));
+            }
+
+            class CustomElement : Element
+            {
+                public int MyProperty { get; set; } = 1337;
+            }
+
+            public class ElementSubclassTests
+            {
+                [Test]
+                public void ElementSubclassInitializes()
+                {
+                    var elem = new CustomElement();
+
+                    Assert.That(elem.Owner, Is.Null);
+                    Assert.That(elem.Count, Is.Zero);
+                    Assert.That(elem.MyProperty, Is.EqualTo(1337));
+                }
+
+                [Test]
+                public void PropertyAccessByKey()
+                {
+                    var elem = new CustomElement();
+                    var myprop = elem["MyProperty"];
+
+                    Assert.That(myprop, Is.EqualTo(1337));
+                }
+
+                [Test]
+                public void PropertySetByKey_Throws()
+                {
+                    var elem = new CustomElement();
+
+                    var ex = Assert.Throws(typeof(InvalidOperationException), () => elem["MyProperty"] = 5);
+
+                    Assert.That(ex.Message, Does.Contain("Cannot set the value of a property-derived attribute by key"));
+                }
+
+                [Test]
+                public void CanBeAssignedToDatamodelRoot()
+                {
+                    var elem = new CustomElement();
+
+                    var dm = new DM("test", 1);
+                    dm.Root = elem;
+
+                    Assert.That(elem.Owner, Is.EqualTo(dm));
+                }
+
+                [Test]
+                public void Nested_CanBeAssignedToDatamodelRoot()
+                {
+                    var elem = new CustomElement();
+                    var elem2 = new CustomElement();
+                    elem["elem2"] = elem2;
+                    elem2["woah"] = 5;
+
+                    Assert.That(elem.Owner, Is.Null);
+                    Assert.That(elem.Count, Is.EqualTo(1));
+                    Assert.That(elem2.Owner, Is.Null);
+                    Assert.That(elem2.Count, Is.EqualTo(1));
+
+                    Assert.That(elem.First().Key, Is.EqualTo("elem2"));
+                    Assert.That(elem.First().Value, Is.EqualTo(elem2));
+                    Assert.That(elem2.First().Key, Is.EqualTo("woah"));
+                    Assert.That(elem2.First().Value, Is.EqualTo(5));
+
+                    var dm = new DM("test", 1);
+                    dm.Root = elem;
+
+                    Assert.That(elem.Owner, Is.EqualTo(dm));
+                    Assert.That(elem2.Owner, Is.EqualTo(dm));
+                }
+            }
+
+            [Test]
+            public void ElementArrayInitializes()
+            {
+                var elem = new ElementArray();
+
+                Assert.That(elem.Owner, Is.Null);
+                Assert.That(elem.Count, Is.Zero);
+            }
+        }
+
         [Test]
         public void Create_Binary_9()
         {
