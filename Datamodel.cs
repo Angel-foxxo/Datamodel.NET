@@ -45,7 +45,7 @@ namespace Datamodel
             typeof(string),
             typeof(byte[]),
             typeof(TimeSpan),
-            typeof(System.Drawing.Color),
+            typeof(Color),
             typeof(Vector2),
             typeof(Vector3),
             typeof(Vector4),

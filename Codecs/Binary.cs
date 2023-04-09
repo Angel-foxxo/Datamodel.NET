@@ -27,11 +27,21 @@ namespace Datamodel.Codecs
         static Binary()
         {
             SupportedAttributes[1] =
-            SupportedAttributes[2] = new Type[] { typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]), null /* ObjectID */, typeof(System.Drawing.Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4) };
+            SupportedAttributes[2] = new Type[] {
+                typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
+                null /* ObjectID */, typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4)
+            };
             SupportedAttributes[3] =
             SupportedAttributes[4] =
-            SupportedAttributes[5] = new Type[] { typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]), typeof(TimeSpan), typeof(System.Drawing.Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4) };
-            SupportedAttributes[9] = new Type[] { typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]), typeof(TimeSpan), typeof(System.Drawing.Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4), typeof(UInt64), typeof(byte) };
+            SupportedAttributes[5] = new Type[] {
+                typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
+                typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4)
+            };
+            SupportedAttributes[9] = new Type[] {
+                typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
+                typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4),
+                typeof(ulong), typeof(byte)/*, typeof(QAngle) */
+            };
         }
 
         public void Dispose()
@@ -262,10 +272,10 @@ namespace Datamodel.Codecs
             if (type == typeof(TimeSpan))
                 return TimeSpan.FromTicks(Reader.ReadInt32() * (TimeSpan.TicksPerSecond / DatamodelTicksPerSecond));
 
-            if (type == typeof(System.Drawing.Color))
+            if (type == typeof(Color))
             {
                 var rgba = Reader.ReadBytes(4);
-                return System.Drawing.Color.FromArgb(rgba[3], rgba[0], rgba[1], rgba[2]);
+                return Color.FromBytes(rgba);
             }
 
             if (type == typeof(Vector2))
@@ -423,7 +433,7 @@ namespace Datamodel.Codecs
 
             if (type == typeof(TimeSpan))
                 length = sizeof(int);
-            else if (type == typeof(System.Drawing.Color))
+            else if (type == typeof(Color))
                 length = 4;
             else if (type == typeof(bool))
                 length = 1;
@@ -626,9 +636,9 @@ namespace Datamodel.Codecs
                     return;
                 }
 
-                if (value is System.Drawing.Color colour_value)
+                if (value is Color colour_value)
                 {
-                    Writer.Write(new byte[] { colour_value.R, colour_value.G, colour_value.B, colour_value.A });
+                    Writer.Write(colour_value.ToBytes());
                     return;
                 }
 

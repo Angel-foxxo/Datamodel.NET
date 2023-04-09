@@ -100,7 +100,7 @@ namespace Datamodel.Codecs
                 return new BinaryArray(count);
             if (t == typeof(TimeSpan))
                 return new TimeSpanArray(count);
-            if (t == typeof(System.Drawing.Color))
+            if (t == typeof(Color))
                 return new ColorArray(count);
             if (t == typeof(Vector2))
                 return new Vector2Array(count);
@@ -114,10 +114,10 @@ namespace Datamodel.Codecs
                 return new MatrixArray(count);
             if (t == typeof(byte))
                 return new ByteArray(count);
-            if (t == typeof(UInt64))
+            if (t == typeof(ulong))
                 return new UInt64Array(count);
 
-            throw new ArgumentException("Unrecognised Type.");
+            throw new ArgumentException($"Unhandled or invalid type: {t}");
         }
 
         /// <summary>
@@ -139,8 +139,8 @@ namespace Datamodel.Codecs
                 return new BinaryArray(source.Cast<byte[]>());
             if (t == typeof(TimeSpan))
                 return new TimeSpanArray(source.Cast<TimeSpan>());
-            if (t == typeof(System.Drawing.Color))
-                return new ColorArray(source.Cast<System.Drawing.Color>());
+            if (t == typeof(Color))
+                return new ColorArray(source.Cast<Color>());
             if (t == typeof(Vector2))
                 return new Vector2Array(source.Cast<Vector2>());
             if (t == typeof(Vector3))
@@ -153,7 +153,7 @@ namespace Datamodel.Codecs
                 return new MatrixArray(source.Cast<Matrix4x4>());
             if (t == typeof(byte))
                 return new ByteArray(source.Cast<byte>());
-            if (t == typeof(UInt64))
+            if (t == typeof(ulong))
                 return new UInt64Array(source.Cast<UInt64>());
 
             throw new ArgumentException("Unrecognised Type.");

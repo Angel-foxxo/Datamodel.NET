@@ -132,7 +132,7 @@ namespace Datamodel
             }
             catch (Exception err)
             {
-                throw new CodecException(String.Format("Deferred loading of attribute \"{0}\" on element {1} using codec {2} threw an exception.", Name, ((Element)Owner).ID, OwnerDatamodel.Codec), err);
+                throw new CodecException($"Deferred loading of attribute \"{Name}\" on element {((Element)Owner).ID} using {OwnerDatamodel.Codec} codec threw an exception.", err);
             }
             Offset = 0;
 

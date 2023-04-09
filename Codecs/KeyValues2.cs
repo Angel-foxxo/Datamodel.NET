@@ -28,7 +28,7 @@ namespace Datamodel.Codecs
             TypeNames[typeof(string)] = "string";
             TypeNames[typeof(byte[])] = "binary";
             TypeNames[typeof(TimeSpan)] = "time";
-            TypeNames[typeof(System.Drawing.Color)] = "color";
+            TypeNames[typeof(Color)] = "color";
             TypeNames[typeof(Vector2)] = "vector2";
             TypeNames[typeof(Vector3)] = "vector3";
             TypeNames[typeof(Vector4)] = "vector4";
@@ -240,9 +240,9 @@ namespace Datamodel.Codecs
                     value = BitConverter.ToString((byte[])value).Replace("-", String.Empty);
                 else if (type == typeof(TimeSpan))
                     value = ((TimeSpan)value).TotalSeconds;
-                else if (type == typeof(System.Drawing.Color))
+                else if (type == typeof(Color))
                 {
-                    var c = (System.Drawing.Color)value;
+                    var c = (Color)value;
                     value = String.Join(" ", new int[] { c.R, c.G, c.B, c.A });
                 }
                 else if (value is ulong ulong_value)
@@ -516,7 +516,7 @@ namespace Datamodel.Codecs
             if (type == typeof(Element))
                 return Decode_ParseElement(value);
             if (type == typeof(int))
-                return Int32.Parse(value);
+                return int.Parse(value);
             else if (type == typeof(float))
                 return float.Parse(value);
             else if (type == typeof(bool))
@@ -535,13 +535,13 @@ namespace Datamodel.Codecs
 
             var num_list = value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 
-            if (type == typeof(System.Drawing.Color))
+            if (type == typeof(Color))
             {
                 var rgba = num_list.Select(i => byte.Parse(i)).ToArray();
-                return System.Drawing.Color.FromArgb(rgba[3], rgba[0], rgba[1], rgba[2]);
+                return Color.FromBytes(rgba);
             }
 
-            if (type == typeof(UInt64)) return UInt64.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber);
+            if (type == typeof(ulong)) return ulong.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber);
             if (type == typeof(byte)) return byte.Parse(value);
 
             var f_list = num_list.Select(i => float.Parse(i)).ToArray();
@@ -554,8 +554,9 @@ namespace Datamodel.Codecs
                 f_list[4], f_list[5], f_list[6], f_list[7],
                 f_list[8], f_list[9], f_list[10], f_list[11],
                 f_list[12], f_list[13], f_list[14], f_list[15]);
+            else if (type == typeof(QAngle)) return new QAngle(f_list[0], f_list[1], f_list[2]);
 
-            else throw new ArgumentException("Internal error: ParseValue passed unsupported Type.");
+            else throw new ArgumentException($"Internal error: ParseValue passed unsupported type: {type}.");
         }
 
         public Datamodel Decode(int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
@@ -578,7 +579,7 @@ namespace Datamodel.Codecs
                 try
                 { Decode_ParseElement(next); }
                 catch (Exception err)
-                { throw new CodecException(String.Format("KeyValues2 decode failed on line {0}:\n\n{1}", Line, err.Message), err); }
+                { throw new CodecException($"KeyValues2 decode failed on line {Line}:\n\n{err.Message}", err); }
             }
 
             return DM;

@@ -5,7 +5,6 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using System.Drawing;
 using System.Threading;
 using System.ComponentModel;
 
@@ -338,7 +337,7 @@ namespace Datamodel
     }
 
     public class ElementArray : Array<Element>
-    {    
+    {
         public ElementArray() { }
 
         public ElementArray(IEnumerable<Element> enumerable)
@@ -587,10 +586,10 @@ namespace Datamodel
     }
 
     [CLSCompliant(false)]
-    public class UInt64Array : Array<UInt64>
+    public class UInt64Array : Array<ulong>
     {
         public UInt64Array() { }
-        public UInt64Array(IEnumerable<UInt64> enumerable)
+        public UInt64Array(IEnumerable<ulong> enumerable)
             : base(enumerable)
         { }
         public UInt64Array(int capacity)

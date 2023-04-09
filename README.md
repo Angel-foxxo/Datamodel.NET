@@ -14,13 +14,12 @@ The following CLR types are supported as Datamodel attributes:
 * `byte[]`
 * `ulong`
 * `System.TimeSpan`
-* `System.Drawing.Color`
 
 Additionally, the following Datamodel.NET types are supported:
 
 * `Element` (a named collection of attributes)
 * `Vector2`
-* `Vector3` / `Angle`
+* `Vector3` / `QAngle`
 * `Vector4` / `Quaternion`
 * `Matrix` (4x4)
 
@@ -32,22 +31,10 @@ Additionally, the following Datamodel.NET types are supported:
 * Support for all known versions of Valve's `binary` and `keyvalues2` DMX encodings
 * Convenient `IEnumerable`, `INotifyPropertyChanged` and `INotifyCollectionChanged` implementations
 * Supports partial trust
-* Supports XAML
 * Inline documentation
 * Binary codec supports just-in-time attribute loading
 * Write your own codecs with the `ICodec` interface
-
-### Data Binding
-
-You can bind to an attribute as if it were a property of the host element, e.g. `{Binding MyElement.Hello}`. If an attribute's name collides with a statically-defined property of `Element` then use indexer syntax instead, e.g. `{Binding MyElement[Owner]}`.
-
-### ObservableAttribute
-
-In order to correctly implement `IDictionary`, attributes are exposed as `KeyValuePair` objects. Since these aren't great for data binding the utility type `ObservableAttribute` is provided.
-
-`ObservableAttribute` will automatically wrap its descendants. For further binding convenience it will also wrap array items, generating an index-based label in place of an attribute key for each.
-
-An `IValueConverter` class is provided in a comment block at the start of `ObservableAttribute`'s class definition.
+* Support for property based attributes
 
 ## Quick example
 
@@ -62,12 +49,9 @@ var MyString = HelloWorld.Root.Get<string>("Hello");
 HelloWorld.Save("hello world.dmx", "keyvalues2", 1); // must provide an encoding name and version
 ```
 
-```xml
-<Datamodel Format="helloworld" FormatVersion="1">
-    <Datamodel.Root>
-        <Element Name="my_root">
-            <sys:String x:Key="Hello">World</sys:String>
-        </Element>
-    </Datamodel.Root>
-</Datamodel>
+```vdf
+<--! dmx encoding keyvalues2 1 format helloworld 1>
+{
+    "Hello" "string" "World"
+}
 ```

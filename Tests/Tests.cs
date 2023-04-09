@@ -8,7 +8,6 @@ using NUnit.Framework;
 using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
-using System.Text;
 
 namespace Datamodel_Tests
 {
@@ -29,13 +28,29 @@ namespace Datamodel_Tests
             Random.Shared.NextBytes(binary);
             var quat = Quaternion.Normalize(new Quaternion(1, 2, 3, 4)); // dmxconvert will normalise this if I don't!
 
-            TestValues_V1 = new List<object>(new object[] { "hello_world", 1, 1.5f, true, binary, null, System.Drawing.Color.Blue,
-                new Vector2(1,2), new Vector3(1,2,3), new Vector4(1,2,3,4), quat, new Matrix4x4(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16) });
+            TestValues_V1 = new List<object> {
+                "hello_world",
+                1,
+                1.5f,
+                true,
+                binary,
+                null,
+                new Color(1, 255, 2, 244),
+                new Vector2(1,2),
+                new Vector3(1,2,3),
+                new Vector4(1,2,3,4),
+                quat,
+                new Matrix4x4(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
+            };
 
             TestValues_V2 = TestValues_V1.ToList();
-            TestValues_V2[5] = TimeSpan.FromMinutes(5) + TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond / 2);
+            TestValues_V2.Add(TimeSpan.FromMinutes(5) + TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond / 2));
 
-            TestValues_V3 = TestValues_V1.Concat(new object[] { (byte)0xFF, (UInt64)0xFFFFFFFF }).ToList();
+            TestValues_V3 = TestValues_V1.Concat(new object[] {
+                (byte)0xFF,
+                (ulong)0xFFFFFFFF,
+                //new QAngle(0, 90, 180)
+            }).ToList();
         }
 
 
@@ -173,7 +188,7 @@ namespace Datamodel_Tests
                 Assert.AreEqual(t.Item1, t.Item2, 1e-6, name);
         }
 
-        protected void ValidatePopulated(string encoding_name, int encoding_version)
+        protected static void ValidatePopulated(string encoding_name, int encoding_version)
         {
             var dm = DM.Load(DmxConvertPath);
             Assert.AreEqual(RootGuid, dm.Root.ID);
@@ -182,13 +197,12 @@ namespace Datamodel_Tests
                 if (value == null) continue;
                 var name = value.GetType().Name;
 
-                if (value is ICollection)
-                    CollectionAssert.AreEqual((ICollection)value, (ICollection)dm.Root[name]);
-                else if (value is System.Drawing.Color)
-                    Assert.AreEqual(((System.Drawing.Color)value).ToArgb(), dm.Root.Get<System.Drawing.Color>(name).ToArgb());
-                else if (value is Quaternion)
+                if (value is ICollection collection)
+                    CollectionAssert.AreEqual(collection, (ICollection)dm.Root[name]);
+                else if (value is Color color)
+                    Assert.AreEqual(color, dm.Root.Get<Color>(name));
+                else if (value is Quaternion quat)
                 {
-                    var quat = (Quaternion)value;
                     var expected = dm.Root.Get<Quaternion>(name);
                     Assert.AreEqual(quat.W, expected.W, 1e-6, name + " W");
                     Assert.AreEqual(quat.X, expected.X, 1e-6, name + " X");
@@ -202,7 +216,7 @@ namespace Datamodel_Tests
             dm.Dispose();
         }
 
-        protected DM Create(string encoding, int version, bool memory_save = false)
+        protected static DM Create(string encoding, int version, bool memory_save = false)
         {
             var dm = MakeDatamodel();
             Populate(dm, encoding, version);
