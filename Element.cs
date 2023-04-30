@@ -73,7 +73,14 @@ namespace Datamodel
             // For subclasses get the actual classname
             if (GetType() != typeof(Element))
             {
-                ClassName = GetType().Name;
+                var type = GetType().Name;
+                var index = type.IndexOf('`');
+                if (index > 0)
+                {
+                    type = type[..index];
+                }
+
+                ClassName = type;
             }
         }
 
