@@ -84,12 +84,30 @@ namespace Datamodel
             {
                 RWLock.ExitWriteLock();
             }
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, (object)item, index));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
         }
 
         protected virtual void Insert_Internal(int index, T item)
         {
             Inner.Insert(index, item);
+        }
+
+
+        public void AddRange(IEnumerable<T> items)
+        {
+            RWLock.EnterWriteLock();
+            try
+            {
+                foreach (var item in items)
+                {
+                    Insert_Internal(Inner.Count, item);
+                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, Inner.Count));
+                }
+            }
+            finally
+            {
+                RWLock.ExitWriteLock();
+            }
         }
 
         public void RemoveAt(int index)
