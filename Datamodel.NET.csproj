@@ -3,6 +3,10 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RootNamespace>Datamodel</RootNamespace>
+    <PackageId>KeyValues2</PackageId>
+    <Version>0.2.0</Version>
+    <PackageLicenseFile>COPYING</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <NoWarn>IDE0018</NoWarn>
@@ -25,6 +29,10 @@
   <PropertyGroup>
     <DelaySign>false</DelaySign>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="COPYING" Pack="true" PackagePath="\"/>
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="DmxPad\**" />
     <EmbeddedResource Remove="DmxPad\**" />
