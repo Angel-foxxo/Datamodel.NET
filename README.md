@@ -34,7 +34,7 @@ Additionally, the following Datamodel.NET types are supported:
 * Inline documentation
 * Binary codec supports just-in-time attribute loading
 * Write your own codecs with the `ICodec` interface
-* Support for property based attributes
+* Support for property based attributes, Datamodel.Element subclassing
 
 ## Quick example
 
