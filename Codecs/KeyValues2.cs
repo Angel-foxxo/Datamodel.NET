@@ -11,6 +11,10 @@ namespace Datamodel.Codecs
     [CodecFormat("keyvalues2", 2)]
     [CodecFormat("keyvalues2", 3)]
     [CodecFormat("keyvalues2", 4)]
+    [CodecFormat("keyvalues2_noids", 1)]
+    [CodecFormat("keyvalues2_noids", 2)]
+    [CodecFormat("keyvalues2_noids", 3)]
+    [CodecFormat("keyvalues2_noids", 4)]
     class KeyValues2 : ICodec, IDisposable
     {
         TextReader Reader;
@@ -59,7 +63,7 @@ namespace Datamodel.Codecs
                 set
                 {
                     indent_count = value;
-                    indent_string = "\n" + String.Concat(Enumerable.Repeat("\t", value));
+                    indent_string = "\n" + string.Concat(Enumerable.Repeat("    ", value));
                 }
             }
             int indent_count = 0;
@@ -91,7 +95,7 @@ namespace Datamodel.Codecs
 
             public void WriteTokens(params string[] values)
             {
-                Output.Write("\"{0}\"", String.Join("\" \"", values.Select(s => Sanitise(s))));
+                Output.Write('"' + string.Join("\" \"", values.Select(s => Sanitise(s))) + '"');
             }
 
             public void WriteLine()
@@ -129,11 +133,15 @@ namespace Datamodel.Codecs
                 Output.Flush();
             }
         }
+
+        string Encoding;
         int EncodingVersion;
 
         // Multi-referenced elements are written out as a separate block at the end of the file.
         // In-line only the id is written.
         Dictionary<Element, int> ReferenceCount;
+
+        bool SupportsReferenceIds;
 
         void CountReferences(Element elem)
         {
@@ -210,24 +218,29 @@ namespace Datamodel.Codecs
 
                 if (in_array)
                 {
-                    if (elem != null && ReferenceCount[elem] == 1)
+                    if (ShouldBeReferenced(elem))
+                    {
+                        Writer.WriteTokenLine("element", id);
+                    }
+                    else
                     {
                         Writer.WriteLine();
                         WriteElement(elem);
                     }
-                    else
-                        Writer.WriteTokenLine("element", id);
+
                     Writer.Write(",");
                 }
                 else
                 {
-                    if (elem != null && ReferenceCount.ContainsKey(elem) && ReferenceCount[elem] == 1)
+                    if (ShouldBeReferenced(elem))
                     {
-                        Writer.WriteLine(String.Format("\"{0}\" ", name));
-                        WriteElement(elem);
+                        Writer.WriteTokenLine(name, "element", id);
                     }
                     else
-                        Writer.WriteTokenLine(name, "element", id);
+                    {
+                        Writer.WriteLine($"\"{name}\" ");
+                        WriteElement(elem);
+                    }
                 }
             }
             else
@@ -237,13 +250,13 @@ namespace Datamodel.Codecs
                 else if (type == typeof(float))
                     value = (float)value;
                 else if (type == typeof(byte[]))
-                    value = BitConverter.ToString((byte[])value).Replace("-", String.Empty);
+                    value = BitConverter.ToString((byte[])value).Replace("-", string.Empty);
                 else if (type == typeof(TimeSpan))
                     value = ((TimeSpan)value).TotalSeconds;
                 else if (type == typeof(Color))
                 {
                     var c = (Color)value;
-                    value = String.Join(" ", new int[] { c.R, c.G, c.B, c.A });
+                    value = string.Join(" ", new int[] { c.R, c.G, c.B, c.A });
                 }
                 else if (value is ulong ulong_value)
                     value = $"0x{ulong_value:X}";
@@ -267,13 +280,11 @@ namespace Datamodel.Codecs
                 }
                 else if (type == typeof(Quaternion))
                 {
-                    var arr = new float[4];
                     var q = (Quaternion)value;
                     value = string.Join(" ", q.X, q.Y, q.Z, q.W);
                 }
                 else if (type == typeof(Matrix4x4))
                 {
-                    var arr = new float[4 * 4];
                     var m = (Matrix4x4)value;
                     value = string.Join(" ", m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
                 }
@@ -290,14 +301,21 @@ namespace Datamodel.Codecs
 
         }
 
+        private bool ShouldBeReferenced(Element elem)
+        {
+            return SupportsReferenceIds && (elem == null || ReferenceCount.TryGetValue(elem, out var refCount) && refCount > 1);
+        }
+
         void WriteElement(Element element)
         {
             if (TypeNames.ContainsValue(element.ClassName))
-                throw new CodecException(String.Format("Element {0} uses reserved type name \"{1}\".", element.ID, element.ClassName));
+                throw new CodecException($"Element {element.ID} uses reserved type name \"{element.ClassName}\"");
             Writer.WriteTokens(element.ClassName);
             Writer.WriteLine("{");
             Writer.Indent++;
-            Writer.WriteTokenLine("id", "elementid", element.ID.ToString());
+
+            if (SupportsReferenceIds)
+                Writer.WriteTokenLine("id", "elementid", element.ID.ToString());
 
             // Skip empty names right now.
             if (!string.IsNullOrEmpty(element.Name))
@@ -317,12 +335,15 @@ namespace Datamodel.Codecs
             Writer.WriteLine("}");
         }
 
-        public void Encode(Datamodel dm, int encoding_version, Stream stream)
+        public void Encode(Datamodel dm, string encoding, int encoding_version, Stream stream)
         {
             Writer = new KV2Writer(stream);
+            Encoding = encoding;
             EncodingVersion = encoding_version;
 
-            Writer.Write(String.Format(CodecUtilities.HeaderPattern, "keyvalues2", encoding_version, dm.Format, dm.FormatVersion));
+            SupportsReferenceIds = Encoding != "keyvalues2_noids";
+
+            Writer.Write(String.Format(CodecUtilities.HeaderPattern, encoding, encoding_version, dm.Format, dm.FormatVersion));
             Writer.WriteLine();
 
             ReferenceCount = new Dictionary<Element, int>();
@@ -340,17 +361,22 @@ namespace Datamodel.Codecs
                 Writer.WriteLine();
             }
 
-            CountReferences(dm.Root);
+            if (SupportsReferenceIds)
+                CountReferences(dm.Root);
+
             WriteElement(dm.Root);
             Writer.WriteLine();
 
-            foreach (var pair in ReferenceCount.Where(pair => pair.Value > 1))
+            if (SupportsReferenceIds)
             {
-                if (pair.Key == dm.Root)
-                    continue;
-                Writer.WriteLine();
-                WriteElement(pair.Key);
-                Writer.WriteLine();
+                foreach (var pair in ReferenceCount.Where(pair => pair.Value > 1))
+                {
+                    if (pair.Key == dm.Root)
+                        continue;
+                    Writer.WriteLine();
+                    WriteElement(pair.Key);
+                    Writer.WriteLine();
+                }
             }
 
             Writer.Flush();
@@ -559,9 +585,12 @@ namespace Datamodel.Codecs
             else throw new ArgumentException($"Internal error: ParseValue passed unsupported type: {type}.");
         }
 
-        public Datamodel Decode(int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
         {
             DM = new Datamodel(format, format_version);
+
+            if (encoding == "keyvalues2_noids")
+                throw new NotImplementedException("KeyValues2_noids decoding not implemented.");
 
             stream.Seek(0, SeekOrigin.Begin);
             Reader = new StreamReader(stream, Datamodel.TextEncoding);

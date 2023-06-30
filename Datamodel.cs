@@ -143,13 +143,18 @@ namespace Datamodel
                 foreach (var version in format_attr.Versions)
                 {
                     var reg = new CodecRegistration(format_attr.Name, version);
-                    if (Codecs.ContainsKey(reg) && Codecs[reg] != type)
-                    {
-                        Trace.TraceInformation("Datamodel.NET: Replacing existing codec for {0} {1} ({2}) with {3}", format_attr.Name, version, Codecs[reg].Name, type.Name);
-                    }
-
-                    Codecs[reg] = type;
+                    AddCodec(type, format_attr, reg);
                 }
+            }
+
+            static void AddCodec(Type type, CodecFormatAttribute format_attr, CodecRegistration reg)
+            {
+                if (Codecs.ContainsKey(reg) && Codecs[reg] != type)
+                {
+                    Trace.TraceInformation("Datamodel.NET: Replacing existing codec for {0} {1} ({2}) with {3}", format_attr.Name, reg.Item2, Codecs[reg].Name, type.Name);
+                }
+
+                Codecs[reg] = type;
             }
         }
 
@@ -202,7 +207,7 @@ namespace Datamodel
                 throw new InvalidOperationException(FormatBlankError);
             }
 
-            GetCodec(encoding, encoding_version).Encode(this, encoding_version, stream);
+            GetCodec(encoding, encoding_version).Encode(this, encoding, encoding_version, stream);
         }
 
         /// <summary>
@@ -289,7 +294,7 @@ namespace Datamodel
 
             ICodec codec = GetCodec(encoding, encoding_version);
 
-            var dm = codec.Decode(encoding_version, format, format_version, stream, defer_mode);
+            var dm = codec.Decode(encoding, encoding_version, format, format_version, stream, defer_mode);
             if (defer_mode == DeferredMode.Automatic && codec is IDeferredAttributeCodec deferredCodec)
             {
                 dm.Stream = stream;

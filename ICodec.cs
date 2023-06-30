@@ -18,7 +18,7 @@ namespace Datamodel.Codecs
         /// <param name="dm">The Datamodel to encode.</param>
         /// <param name="encoding_version">The encoding version to use.</param>
         /// <param name="stream">The output stream.</param>
-        void Encode(Datamodel dm, int encoding_version, Stream stream);
+        void Encode(Datamodel dm, string encoding, int encoding_version, Stream stream);
 
         /// <summary>
         /// Decodes a <see cref="Datamodel"/> from a <see cref="Stream"/>.
@@ -29,7 +29,7 @@ namespace Datamodel.Codecs
         /// <param name="stream">The input stream. Its position will always be 0. Do not dispose.</param>
         /// <param name="defer_mode">The deferred loading mode specified by the caller. Only relevant to implementers of <see cref="IDeferredAttributeCodec"/></param>
         /// <returns></returns>
-        Datamodel Decode(int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode);
+        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode);
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ namespace Datamodel.Codecs
             if (t == typeof(byte))
                 return new ByteArray(source.Cast<byte>());
             if (t == typeof(ulong))
-                return new UInt64Array(source.Cast<UInt64>());
+                return new UInt64Array(source.Cast<ulong>());
 
             throw new ArgumentException("Unrecognised Type.");
         }
@@ -167,7 +167,7 @@ namespace Datamodel.Codecs
         /// <param name="defer_offset">The location in the encoded DMX stream at which this Attribute's value can be found.</param>
         public static void AddDeferredAttribute(Element elem, string key, long offset)
         {
-            if (offset <= 0) throw new ArgumentOutOfRangeException("offset", "Address must be greater than 0.");
+            if (offset <= 0) throw new ArgumentOutOfRangeException(nameof(offset), "Address must be greater than 0.");
             elem.Add(key, offset);
         }
     }

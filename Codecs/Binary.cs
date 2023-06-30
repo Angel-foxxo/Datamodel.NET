@@ -228,7 +228,7 @@ namespace Datamodel.Codecs
         }
         StringDictionary StringDict;
 
-        public void Encode(Datamodel dm, int encoding_version, Stream stream)
+        public void Encode(Datamodel dm, string encoding, int encoding_version, Stream stream)
         {
             using var writer = new DmxBinaryWriter(stream);
             var encoder = new Encoder(writer, dm, encoding_version);
@@ -316,7 +316,7 @@ namespace Datamodel.Codecs
             throw new ArgumentException(type == null ? "No type provided to GetValue()" : "Cannot read value of type " + type.Name);
         }
 
-        public Datamodel Decode(int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
         {
             stream.Seek(0, SeekOrigin.Begin);
             while (true)
