@@ -201,8 +201,9 @@ namespace Datamodel
                 if (property.GetIndexParameters().Length == 0 && property.DeclaringType.IsSubclassOf(typeof(Element)))
                 {
                     var name = property.Name;
-                    name = property.DeclaringType.GetCustomAttribute<Format.AttributeNameConventionAttribute>()?.GetAttributeName(name) ?? name;
-                    name = property.GetCustomAttribute<Format.Attribute>()?.Name ?? name;
+                    name = property.DeclaringType.GetCustomAttribute<Format.AttributeNamingConventionAttribute>()?
+                        .GetAttributeName(name, property.PropertyType) ?? name;
+                    name = property.GetCustomAttribute<Format.DMProperty>()?.Name ?? name;
 
                     properties.Add((name, property));
                 }
