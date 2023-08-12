@@ -23,7 +23,7 @@ public struct Color : IEquatable<Color>
     public static bool operator !=(Color a, Color b)
         => !(a == b);
 
-    public static Color FromBytes(byte[] bytes)
+    public static Color FromBytes(ReadOnlySpan<byte> bytes)
         => new(bytes[0], bytes[1], bytes[2], bytes[3]);
 
     public byte[] ToBytes()
