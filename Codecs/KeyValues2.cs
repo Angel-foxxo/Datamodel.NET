@@ -178,7 +178,7 @@ namespace Datamodel.Codecs
                 // TODO: subclass check in this method like above - and in all other places with == typeof(Element)
                 inner_type = Datamodel.GetArrayInnerType(type);
 
-                if (inner_type == typeof(byte))
+                if (inner_type == typeof(byte) && type == typeof(byte[]))
                     inner_type = null; // serialize as binary at all times
 
                 /*
