@@ -177,8 +177,14 @@ namespace Datamodel.Codecs
             {
                 // TODO: subclass check in this method like above - and in all other places with == typeof(Element)
                 inner_type = Datamodel.GetArrayInnerType(type);
+
+                if (inner_type == typeof(byte))
+                    inner_type = null; // serialize as binary at all times
+
+                /*
                 if (inner_type == typeof(byte) && !ValidAttributes[EncodingVersion].Contains(typeof(byte)))
                     inner_type = null; // fall back on the "binary" type in older KV2 versions
+                */
             }
 
             // Elements are supported by all.
