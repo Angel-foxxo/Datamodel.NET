@@ -18,7 +18,8 @@ namespace Datamodel_Tests
         protected FileStream Binary_4_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/binary4.dmx");
         protected FileStream KeyValues2_1_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05.dmx");
 
-        const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/sbox/bin/win64";
+        //const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
+        const string GameBin = @"D:/Games/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
         static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
         static readonly bool DmxConvertExe_Exists = File.Exists(DmxConvertExe);
 
@@ -498,13 +499,23 @@ namespace Datamodel_Tests
         }
 
         [Test, TestCaseSource(nameof(GetDmxFiles))]
-        public void Load(string path)
+        public void Unserialize(string path)
         {
             var dm = DM.Load(path);
             PrintContents(dm);
             dm.Dispose();
         }
 
+        [Test]
+        public void Cs2MapConvert()
+        {
+            var file = Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap");
+            var dm = DM.Load(file);
+
+            // file will be in bin/Debug/net6.0/Resources
+            dm.Save(file + "datamodel.txt", "keyvalues2", 4);
+            dm.Save(file + "datamodel.vmap", dm.Encoding, dm.EncodingVersion);
+        }
 
         [Test]
         public void Import()
