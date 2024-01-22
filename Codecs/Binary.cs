@@ -39,8 +39,8 @@ namespace Datamodel.Codecs
             };
             SupportedAttributes[9] = new Type[] {
                 typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
-                typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4),
-                typeof(ulong), typeof(byte)/*, typeof(QAngle) */
+                typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(QAngle), typeof(Quaternion), typeof(Matrix4x4),
+                typeof(ulong), typeof(byte)
             };
         }
 
@@ -288,6 +288,12 @@ namespace Datamodel.Codecs
                 var ords = ReadVector(3);
                 return new Vector3(ords[0], ords[1], ords[2]);
             }
+            if (type == typeof(QAngle))
+            {
+                var ords = ReadVector(3);
+                return new QAngle(ords[0], ords[1], ords[2]);
+            }
+
             if (type == typeof(Vector4))
             {
                 var ords = ReadVector(4);
@@ -653,6 +659,13 @@ namespace Datamodel.Codecs
                     Writer.Write(vector3.X);
                     Writer.Write(vector3.Y);
                     Writer.Write(vector3.Z);
+                    return;
+                }
+                if (value is QAngle qangle)
+                {
+                    Writer.Write(qangle.Pitch);
+                    Writer.Write(qangle.Yaw);
+                    Writer.Write(qangle.Roll);
                     return;
                 }
                 if (value is Vector4 vector4)

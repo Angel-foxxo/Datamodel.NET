@@ -25,13 +25,13 @@ public struct QAngle : IEquatable<QAngle>
     public static bool operator !=(QAngle a, QAngle b)
         => !(a == b);
 
-    public override int GetHashCode()
+    public readonly override int GetHashCode()
         => HashCode.Combine(Pitch, Yaw, Roll);
 
-    public bool Equals(QAngle other)
+    public readonly bool Equals(QAngle other)
         => this == other;
 
-    public override bool Equals(object obj)
+    public readonly override bool Equals(object obj)
     {
         if (obj is QAngle q)
             return this == q;
