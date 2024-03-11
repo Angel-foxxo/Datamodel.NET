@@ -531,7 +531,7 @@ namespace Datamodel.Codecs
                 StringDict.WriteSelf();
 
                 {
-                    var counter = new HashSet<Element>(Element.IDComparer.Default);
+                    var counter = new HashSet<Element>(); //(Element.IDComparer.Default);
                     var elementCount = CountChildren(Datamodel.Root, counter);
 
                     Writer.Write(elementCount);
@@ -607,7 +607,8 @@ namespace Datamodel.Codecs
                 {
                     StringDict.WriteString(attr.Key);
                     var attr_type = attr.Value == null ? typeof(Element) : attr.Value.GetType();
-                    Writer.Write(TypeToId(attr_type, EncodingVersion));
+                    var attr_type_id = TypeToId(attr_type, EncodingVersion);
+                    Writer.Write(attr_type_id);
 
                     if (attr.Value == null || !Datamodel.IsDatamodelArrayType(attr.Value.GetType()))
                         WriteAttribute(attr.Value, false);
