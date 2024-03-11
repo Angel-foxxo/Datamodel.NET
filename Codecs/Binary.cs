@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Numerics;
 using System.IO;
+using System.Diagnostics;
 
 namespace Datamodel.Codecs
 {
@@ -63,8 +64,12 @@ namespace Datamodel.Codecs
             byte i = 0;
             foreach (var list_type in type_list)
             {
-                if (list_type == search_type) break;
-                else i++;
+                if (list_type == typeof(Element) && type.IsSubclassOf(typeof(Element)))
+                    break;
+
+                if (list_type == search_type)
+                    break;
+                i++;
             }
             if (i == type_list.Length)
                 throw new CodecException(String.Format("\"{0}\" is not supported in encoding binary {1}", type.Name, version));
@@ -143,7 +148,7 @@ namespace Datamodel.Codecs
                 if (!Dummy)
                 {
                     foreach (var i in Enumerable.Range(0, LengthSize == sizeof(short) ? Codec.Reader.ReadInt16() : Codec.Reader.ReadInt32()))
-                        Strings.Add(Codec.ReadString_Raw());
+                        AddString(Codec.ReadString_Raw());
                 }
             }
 
@@ -174,15 +179,15 @@ namespace Datamodel.Codecs
                 if (elem == null || elem.Stub || Scraped.Contains(elem)) return;
                 Scraped.Add(elem);
 
-                Strings.Add(elem.Name);
-                Strings.Add(elem.ClassName);
+                AddString(elem.Name);
+                AddString(elem.ClassName);
                 foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
-                    Strings.Add(attr.Key);
+                    AddString(attr.Key);
                     switch (attr.Value)
                     {
                         case string stringValue:
-                            Strings.Add(stringValue);
+                            AddString(stringValue);
                             break;
                         case Element elementValue:
                             ScrapeElement(elementValue);
@@ -193,6 +198,23 @@ namespace Datamodel.Codecs
                             break;
                     }
                 }
+            }
+
+            /// <summary>
+            /// Add non-nullable string.
+            /// </summary>
+            /// <param name="value"></param>
+            void AddString(string value)
+            {
+                value ??= string.Empty;
+
+                Strings.Add(value);
+            }
+
+            int GetIndex(string value)
+            {
+                value ??= string.Empty;
+                return Strings.IndexOf(value);
             }
 
             public string ReadString()
@@ -207,7 +229,7 @@ namespace Datamodel.Codecs
                     Writer.Write(value);
                 else
                 {
-                    var index = Strings.IndexOf(value);
+                    var index = GetIndex(value);
                     if (IndiceSize == sizeof(short)) Writer.Write((short)index);
                     else Writer.Write(index);
                 }
@@ -501,37 +523,42 @@ namespace Datamodel.Codecs
 
             public void Encode()
             {
-                Writer.Write(String.Format(CodecUtilities.HeaderPattern, "binary", EncodingVersion, Datamodel.Format, Datamodel.FormatVersion) + "\n");
+                Writer.Write(string.Format(CodecUtilities.HeaderPattern, "binary", EncodingVersion, Datamodel.Format, Datamodel.FormatVersion) + "\n");
 
                 if (EncodingVersion >= 9)
                     Writer.Write(0); // Prefix elements
 
                 StringDict.WriteSelf();
 
-                Writer.Write(CountChildren(Datamodel.Root, new HashSet<Element>()));
+                {
+                    var counter = new HashSet<Element>(Element.IDComparer.Default);
+                    var elementCount = CountChildren(Datamodel.Root, counter);
+
+                    Writer.Write(elementCount);
+                }
 
                 WriteIndex(Datamodel.Root);
                 foreach (var e in ElementOrder)
                     WriteBody(e);
             }
 
-            int CountChildren(Element elem, HashSet<Element> counted)
+            int CountChildren(Element elem, HashSet<Element> counter)
             {
                 if (elem.Stub) return 0;
                 int num_elems = 1;
-                counted.Add(elem);
+                counter.Add(elem);
                 foreach (var attr in elem.GetAllAttributesForSerialization())
                 {
                     if (attr.Value == null) continue;
 
-                    if (attr.Value is Element child_elem && !counted.Contains(child_elem))
+                    if (attr.Value is Element child_elem && !counter.Contains(child_elem))
                     {
-                        num_elems += CountChildren(child_elem, counted);
+                        num_elems += CountChildren(child_elem, counter);
                     }
                     else if (attr.Value is IEnumerable<Element> child_array)
                     {
-                        foreach (var array_elem in child_array.Where(c => c != null && !counted.Contains(c)))
-                            num_elems += CountChildren(array_elem, counted);
+                        foreach (var array_elem in child_array.Where(c => c != null && !counter.Contains(c)))
+                            num_elems += CountChildren(array_elem, counter);
                     }
                 }
 
@@ -573,8 +600,10 @@ namespace Datamodel.Codecs
 
             void WriteBody(Element elem)
             {
-                Writer.Write(elem.Count);
-                foreach (var attr in elem.GetAllAttributesForSerialization())
+                var attributesIterated = elem.GetAllAttributesForSerialization().ToArray();
+                //Writer.Write(elem.Count);
+                Writer.Write(attributesIterated.Length);
+                foreach (var attr in attributesIterated)
                 {
                     StringDict.WriteString(attr.Key);
                     var attr_type = attr.Value == null ? typeof(Element) : attr.Value.GetType();
