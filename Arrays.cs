@@ -1,18 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
-using System.Threading;
-using System.ComponentModel;
 
 namespace Datamodel
 {
     [DebuggerTypeProxy(typeof(Array<>.DebugView))]
     [DebuggerDisplay("Count = {Inner.Count}")]
-    public abstract class Array<T> : IList<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+    public abstract class Array<T> : IList<T>, IList
     {
         internal class DebugView
         {
@@ -27,15 +23,13 @@ namespace Datamodel
         }
 
         protected List<T> Inner;
-        protected ReaderWriterLockSlim RWLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
-        object _SyncRoot = new object();
 
         public virtual AttributeList Owner
         {
             get => _Owner;
             internal set
             {
-                _Owner = value; OnPropertyChanged();
+                _Owner = value;
             }
         }
         AttributeList _Owner;
@@ -60,247 +54,54 @@ namespace Datamodel
             Inner = new List<T>(capacity);
         }
 
-        public int IndexOf(T item)
-        {
-            RWLock.EnterReadLock();
-            try
-            {
-                return Inner.IndexOf(item);
-            }
-            finally
-            {
-                RWLock.ExitReadLock();
-            }
-        }
+        public int IndexOf(T item) => Inner.IndexOf(item);
 
-        public void Insert(int index, T item)
-        {
-            RWLock.EnterWriteLock();
-            try
-            {
-                Insert_Internal(index, item);
-            }
-            finally
-            {
-                RWLock.ExitWriteLock();
-            }
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
-        }
+        public void Insert(int index, T item) => Insert_Internal(index, item);
+        protected virtual void Insert_Internal(int index, T item) => Inner.Insert(index, item);
 
-        protected virtual void Insert_Internal(int index, T item)
-        {
-            Inner.Insert(index, item);
-        }
+        public void AddRange(IEnumerable<T> items) => Inner.AddRange(items);
 
-
-        public void AddRange(IEnumerable<T> items)
-        {
-            RWLock.EnterWriteLock();
-            try
-            {
-                foreach (var item in items)
-                {
-                    Insert_Internal(Inner.Count, item);
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, Inner.Count));
-                }
-            }
-            finally
-            {
-                RWLock.ExitWriteLock();
-            }
-        }
-
-        public void RemoveAt(int index)
-        {
-            object item;
-            RWLock.EnterWriteLock();
-            try
-            {
-                item = Inner[index];
-                Inner.RemoveAt(index);
-            }
-            finally
-            {
-                RWLock.ExitWriteLock();
-            }
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index));
-        }
+        public void RemoveAt(int index) => Inner.RemoveAt(index);
 
         public virtual T this[int index]
         {
-            get
-            {
-                RWLock.EnterReadLock();
-                try
-                {
-                    return Inner[index];
-                }
-                finally
-                {
-                    RWLock.ExitReadLock();
-                }
-            }
-            set
-            {
-                object current;
-                RWLock.EnterUpgradeableReadLock();
-                try
-                {
-                    current = Inner[index];
-                    RWLock.EnterWriteLock();
-                    try
-                    {
-                        Inner.RemoveAt(index);
-                        Insert_Internal(index, value);
-                    }
-                    finally
-                    {
-                        RWLock.ExitWriteLock();
-                    }
-                }
-                finally
-                {
-                    RWLock.ExitUpgradeableReadLock();
-                }
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, current, (object)value, index));
-            }
+            get => Inner[index];
+            set => Inner[index] = value;
         }
 
-        public void Add(T item)
+        public void Add(T item) => Insert(Inner.Count, item);
+
+        public void Clear() => Inner.Clear();
+
+        public bool Contains(T item) => Inner.Contains(item);
+
+        public void CopyTo(T[] array, int offset)
         {
-            Insert(Inner.Count, item);
+            CopyTo_Internal(array, offset);
         }
 
-        public void Clear()
-        {
-            RWLock.EnterWriteLock();
-            try
-            {
-                Inner.Clear();
-            }
-            finally
-            {
-                RWLock.ExitWriteLock();
-            }
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-        }
+        protected virtual void CopyTo_Internal(T[] array, int offset) => Inner.CopyTo(array, offset);
 
-        public bool Contains(T item)
-        {
-            RWLock.EnterReadLock();
-            try
-            {
-                return Inner.Contains(item);
-            }
-            finally
-            {
-                RWLock.ExitReadLock();
-            }
-        }
-
-        public void CopyTo(T[] array, int arrayIndex)
-        {
-            CopyTo_Internal(array, arrayIndex);
-        }
-
-        protected virtual void CopyTo_Internal(Array array, int index)
-        {
-            RWLock.EnterUpgradeableReadLock();
-            try
-            {
-                foreach (var item in this.Take(Math.Min(array.Length - index, Inner.Count)).ToArray())
-                {
-                    array.SetValue(item, index);
-                    index++;
-                }
-            }
-            finally
-            {
-                RWLock.ExitUpgradeableReadLock();
-            }
-        }
-
-        public int Count
-        {
-            get
-            {
-                RWLock.EnterReadLock();
-                try
-                {
-                    return Inner.Count;
-                }
-                finally
-                {
-                    RWLock.ExitReadLock();
-                }
-            }
-        }
+        public int Count => Inner.Count;
 
         bool ICollection<T>.IsReadOnly { get { return false; } }
 
-        public bool Remove(T item)
-        {
-            int index;
-            RWLock.EnterUpgradeableReadLock();
-            try
-            {
-                index = Inner.IndexOf(item);
-                if (index == -1) return false;
+        public bool IsFixedSize => throw new NotImplementedException();
 
-                RWLock.EnterWriteLock();
-                try
-                {
-                    Inner.RemoveAt(index);
-                }
-                finally
-                {
-                    RWLock.ExitWriteLock();
-                }
-            }
-            finally
-            {
-                RWLock.ExitUpgradeableReadLock();
-            }
+        public bool IsReadOnly => throw new NotImplementedException();
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, (object)item, index));
-            return true;
-        }
+        public bool IsSynchronized => throw new NotImplementedException();
 
-        public IEnumerator<T> GetEnumerator()
-        {
-            for (int i = 0; i < Inner.Count; i++)
-                yield return this[i];
-        }
+        public object SyncRoot => throw new NotImplementedException();
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        object IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public event NotifyCollectionChangedEventHandler CollectionChanged;
-        protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-        {
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                case NotifyCollectionChangedAction.Remove:
-                case NotifyCollectionChangedAction.Reset:
-                    OnPropertyChanged("Count");
-                    break;
-            }
+        public bool Remove(T item) => Inner.Remove(item);
 
-            if (CollectionChanged != null)
-                CollectionChanged(this, e);
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected virtual void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName()] string property = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
-        }
+        public IEnumerator<T> GetEnumerator() => Inner.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => Inner.GetEnumerator();
 
         #region IList
-
         int IList.Add(object value)
         {
             Add((T)value);
@@ -330,7 +131,12 @@ namespace Datamodel
             Remove((T)value);
         }
 
-        object IList.this[int index]
+        void ICollection.CopyTo(Array array, int index)
+        {
+            CopyTo((T[])array, index);
+        }
+
+        /*object IList.this[int index]
         {
             get
             {
@@ -341,17 +147,8 @@ namespace Datamodel
                 this[index] = (T)value;
             }
         }
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            CopyTo_Internal(array, index);
-        }
-
-        bool ICollection.IsSynchronized { get { return true; } }
-
-        public object SyncRoot { get { return _SyncRoot; } }
-
-        #endregion
+        */
+        #endregion IList
     }
 
     public class ElementArray : Array<Element>
@@ -376,38 +173,22 @@ namespace Datamodel
             get => base.Owner;
             internal set
             {
-                RWLock.EnterUpgradeableReadLock();
-                try
-                {
-                    base.Owner = value;
+                base.Owner = value;
 
-                    if (OwnerDatamodel != null)
+                if (OwnerDatamodel != null)
+                {
+                    for (int i = 0; i < Count; i++)
                     {
-                        for (int i = 0; i < Count; i++)
-                        {
-                            var elem = Inner[i];
+                        var elem = Inner[i];
 
-                            if (elem == null) continue;
-                            if (elem.Owner == null)
-                            {
-                                RWLock.EnterWriteLock();
-                                try
-                                {
-                                    Inner[i] = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
-                                }
-                                finally
-                                {
-                                    RWLock.ExitWriteLock();
-                                }
-                            }
-                            else if (elem.Owner != OwnerDatamodel)
-                                throw new ElementOwnershipException();
+                        if (elem == null) continue;
+                        if (elem.Owner == null)
+                        {
+                            Inner[i] = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
                         }
+                        else if (elem.Owner != OwnerDatamodel)
+                            throw new ElementOwnershipException();
                     }
-                }
-                finally
-                {
-                    RWLock.ExitUpgradeableReadLock();
                 }
             }
         }
@@ -429,32 +210,19 @@ namespace Datamodel
         {
             get
             {
-                RWLock.EnterUpgradeableReadLock();
-                try
+                var elem = Inner[index];
+                if (elem != null && elem.Stub && elem.Owner != null)
                 {
-                    var elem = Inner[index];
-                    if (elem != null && elem.Stub && elem.Owner != null)
+                    try
                     {
-                        RWLock.EnterWriteLock();
-                        try
-                        {
-                            elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID);
-                        }
-                        catch (Exception err)
-                        {
-                            throw new DestubException(this, index, err);
-                        }
-                        finally
-                        {
-                            RWLock.ExitWriteLock();
-                        }
+                        elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID);
                     }
-                    return elem;
+                    catch (Exception err)
+                    {
+                        throw new DestubException(this, index, err);
+                    }
                 }
-                finally
-                {
-                    RWLock.ExitUpgradeableReadLock();
-                }
+                return elem;
             }
             set => base[index] = value;
         }
