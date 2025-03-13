@@ -219,6 +219,43 @@ namespace Datamodel_Tests
             dm.Dispose();
         }
 
+        [Test]
+        public static void TypedArrayAddingRemoving()
+        {
+            using var dm = MakeDatamodel();
+            var array = new ElementArray();
+
+            var elementA = new Element(dm, "a");
+            var elementB = new Element();
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            dm.Root["a"] = array;
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            array.Add(elementB);
+            Assert.True(array.Remove(elementB));
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            ((IList)array).Add(elementA);
+            array.Add(elementB);
+
+            array.Add(elementA); // add again?
+            array.Remove(elementA);
+
+            Assert.AreEqual(2, array.Count); // only removes first instance
+
+            array.Remove(elementA);
+            array.Remove(elementB);
+            
+            Assert.AreEqual(0, array.Count);
+        }
+
         protected static DM Create(string encoding, int version, bool memory_save = false)
         {
             var dm = MakeDatamodel();

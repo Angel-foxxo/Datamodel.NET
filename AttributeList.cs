@@ -17,7 +17,7 @@ namespace Datamodel
     /// </summary>
     [DebuggerTypeProxy(typeof(DebugView))]
     [DebuggerDisplay("Count = {Count}")]
-    public class AttributeList : IDictionary<string, object>, IDictionary, INotifyCollectionChanged
+    public class AttributeList : IDictionary<string, object>, IDictionary
     {
         internal OrderedDictionary PropertyInfos;
         internal OrderedDictionary Inner;

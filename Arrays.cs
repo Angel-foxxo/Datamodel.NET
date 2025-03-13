@@ -136,18 +136,6 @@ namespace Datamodel
             CopyTo((T[])array, index);
         }
 
-        /*object IList.this[int index]
-        {
-            get
-            {
-                return this[index];
-            }
-            set
-            {
-                this[index] = (T)value;
-            }
-        }
-        */
         #endregion IList
     }
 

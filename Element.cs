@@ -15,7 +15,7 @@ namespace Datamodel
     [TypeConverter(typeof(TypeConverters.ElementConverter))]
     [DebuggerTypeProxy(typeof(AttributeList.DebugView))]
     [DebuggerDisplay("{Name} {ID}", Type = "{ClassName,nq}")]
-    public class Element : AttributeList, INotifyPropertyChanged, ISupportInitialize
+    public class Element : AttributeList, IEquatable<Element>
     {
         #region Constructors and Init
 
@@ -36,11 +36,11 @@ namespace Datamodel
             ClassName = classNameOverride ?? ClassName;
 
             if (id.HasValue)
-                _ID = id.Value;
+                ID = id.Value;
             else
             {
                 if (!owner.AllowRandomIDs) throw new InvalidOperationException("Random IDs are not allowed in this Datamodel.");
-                _ID = Guid.NewGuid();
+                ID = Guid.NewGuid();
             }
             Owner = owner;
         }
@@ -56,7 +56,7 @@ namespace Datamodel
         {
             ArgumentNullException.ThrowIfNull(owner);
 
-            _ID = id;
+            ID = id;
             Stub = true;
             Name = "Stub element";
             Owner = owner;
@@ -68,7 +68,7 @@ namespace Datamodel
         public Element()
             : base(null)
         {
-            _ID = Guid.NewGuid();
+            ID = Guid.NewGuid();
 
             // For subclasses get the actual classname
             if (GetType() != typeof(Element))
@@ -84,22 +84,6 @@ namespace Datamodel
             }
         }
 
-        bool Initialising = false;
-        void ISupportInitialize.BeginInit()
-        {
-            Initialising = true;
-        }
-
-        void ISupportInitialize.EndInit()
-        {
-            if (ID == default)
-            {
-                ID = Guid.NewGuid();
-            }
-
-            Initialising = false;
-        }
-
         #endregion
 
         #region Properties
@@ -107,16 +91,7 @@ namespace Datamodel
         /// <summary>
         /// Gets the ID of this Element. This must be unique within the Element's <see cref="Datamodel"/>.
         /// </summary>
-        public Guid ID
-        {
-            get => _ID;
-            set
-            {
-                if (!Initialising && value != _ID) throw new InvalidOperationException("ID can only be changed during initialisation.");
-                _ID = value;
-            }
-        }
-        Guid _ID;
+        public Guid ID { get; set; }
 
         /// <summary>
         /// Gets or sets the name of this Element.
@@ -401,6 +376,11 @@ namespace Datamodel
         {
             if (Stub) throw new InvalidOperationException("Cannot access attributes on a stub element.");
             return base.ContainsKey(key);
+        }
+
+        public bool Equals(Element other)
+        {
+            return other != null && ID == other.ID;
         }
     }
 
