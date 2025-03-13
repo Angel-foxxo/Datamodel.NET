@@ -27,7 +27,6 @@ Additionally, the following Datamodel.NET types are supported:
 
 ## Datamodel.NET features
 
-* Threaded, thread-safe
 * Support for all known versions of Valve's `binary` and `keyvalues2` DMX encodings
 * Convenient `IEnumerable`, `INotifyPropertyChanged` and `INotifyCollectionChanged` implementations
 * Supports partial trust
