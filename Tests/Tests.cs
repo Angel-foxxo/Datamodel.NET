@@ -9,6 +9,7 @@ using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
 using System.Text;
+using System.Globalization;
 
 namespace Datamodel_Tests
 {
@@ -19,14 +20,18 @@ namespace Datamodel_Tests
         protected FileStream Binary_4_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/binary4.dmx");
         protected FileStream KeyValues2_1_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05.dmx");
 
-        const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
-        //const string GameBin = @"D:/Games/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
+        // TODO: would be nice if this could find this path automatically
+        //const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
+        const string GameBin = @"D:/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
 
         static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
         static readonly bool DmxConvertExe_Exists = File.Exists(DmxConvertExe);
 
         static DatamodelTests()
         {
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
             var binary = new byte[16];
             Random.Shared.NextBytes(binary);
             var quat = Quaternion.Normalize(new Quaternion(1, 2, 3, 4)); // dmxconvert will normalise this if I don't!

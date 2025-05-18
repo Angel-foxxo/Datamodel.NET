@@ -5,7 +5,6 @@
     <RootNamespace>Datamodel_Tests</RootNamespace>
     <AssemblyName>Datamodel.NET-Tests</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <ItemGroup>
     <None Include="Resources\**">
