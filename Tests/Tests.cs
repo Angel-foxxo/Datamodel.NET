@@ -56,7 +56,7 @@ namespace Datamodel_Tests
 
             TestValues_V3 = TestValues_V1.Concat(new object[] {
                 (byte)0xFF,
-                (ulong)0xFFFFFFFF,
+                (UInt64)0xFFFFFFFF,
                 //new QAngle(0, 90, 180)
             }).ToList();
         }
@@ -224,43 +224,6 @@ namespace Datamodel_Tests
             dm.Dispose();
         }
 
-        [Test]
-        public static void TypedArrayAddingRemoving()
-        {
-            using var dm = MakeDatamodel();
-            var array = new ElementArray();
-
-            var elementA = new Element(dm, "a");
-            var elementB = new Element();
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            dm.Root["a"] = array;
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            array.Add(elementB);
-            Assert.True(array.Remove(elementB));
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            ((IList)array).Add(elementA);
-            array.Add(elementB);
-
-            array.Add(elementA); // add again?
-            array.Remove(elementA);
-
-            Assert.AreEqual(2, array.Count); // only removes first instance
-
-            array.Remove(elementA);
-            array.Remove(elementB);
-            
-            Assert.AreEqual(0, array.Count);
-        }
-
         protected static DM Create(string encoding, int version, bool memory_save = false)
         {
             var dm = MakeDatamodel();
@@ -294,6 +257,44 @@ namespace Datamodel_Tests
     [TestFixture]
     public class Functionality : DatamodelTests
     {
+        [Test]
+        public static void TypedArrayAddingRemoving()
+        {
+            using var dm = MakeDatamodel();
+            var array = new ElementArray();
+
+            var elementA = new Element(dm, "a");
+            var elementB = new Element();
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            dm.Root["a"] = array;
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            array.Add(elementB);
+            Assert.True(array.Remove(elementB));
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            ((IList)array).Add(elementA);
+            array.Add(elementB);
+
+            array.Add(elementA); // add again?
+            array.Remove(elementA);
+
+            Assert.AreEqual(2, array.Count); // only removes first instance
+
+            array.Remove(elementA);
+            array.Remove(elementB);
+
+            Assert.AreEqual(0, array.Count);
+        }
+
+
         [Test]
         public void Create_Datamodel_Vmap()
         {

@@ -258,7 +258,7 @@ namespace Datamodel.Codecs
                 else if (type == typeof(float))
                     value = FormattableString.Invariant($"{(float)value}");
                 else if (type == typeof(byte[]))
-                    value = BitConverter.ToString((byte[])value).Replace("-", string.Empty, false, CultureInfo.InvariantCulture);
+                    value = Convert.ToHexString((byte[])value).Replace("-", string.Empty, false, CultureInfo.InvariantCulture);
                 else if (type == typeof(TimeSpan))
                     value = ((TimeSpan)value).TotalSeconds.ToString(CultureInfo.InvariantCulture);
                 else if (type == typeof(Color))
@@ -267,7 +267,7 @@ namespace Datamodel.Codecs
                     value = FormattableString.Invariant($"{castValue.R} {castValue.G} {castValue.B} {castValue.A}");
                 }
                 else if (value is ulong ulong_value)
-                    value = $"0x{ulong_value.ToString(CultureInfo.InvariantCulture):X}";
+                    value = $"0x{ulong_value.ToString("x", CultureInfo.InvariantCulture)}";
                 else if (type == typeof(Vector2))
                 {
                     var castValue = (Vector2)value;
@@ -554,35 +554,35 @@ namespace Datamodel.Codecs
             if (type == typeof(Element))
                 return Decode_ParseElement(value);
             if (type == typeof(int))
-                return int.Parse(value);
+                return int.Parse(value, CultureInfo.InvariantCulture);
             else if (type == typeof(float))
-                return float.Parse(value);
+                return float.Parse(value, CultureInfo.InvariantCulture);
             else if (type == typeof(bool))
-                return byte.Parse(value) == 1;
+                return byte.Parse(value, CultureInfo.InvariantCulture) == 1;
             else if (type == typeof(byte[]))
             {
                 byte[] result = new byte[value.Length / 2];
                 for (int i = 0; i * 2 < value.Length; i++)
                 {
-                    result[i] = byte.Parse(value.Substring(i * 2, 2), System.Globalization.NumberStyles.HexNumber);
+                    result[i] = byte.Parse(value.AsSpan(i * 2, 2), System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 }
                 return result;
             }
             else if (type == typeof(TimeSpan))
-                return TimeSpan.FromTicks((long)(double.Parse(value) * TimeSpan.TicksPerSecond));
+                return TimeSpan.FromTicks((long)(double.Parse(value, CultureInfo.InvariantCulture) * TimeSpan.TicksPerSecond));
 
             var num_list = value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 
             if (type == typeof(Color))
             {
-                var rgba = num_list.Select(i => byte.Parse(i)).ToArray();
+                var rgba = num_list.Select(i => byte.Parse(i, CultureInfo.InvariantCulture)).ToArray();
                 return Color.FromBytes(rgba);
             }
 
-            if (type == typeof(ulong)) return ulong.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber);
-            if (type == typeof(byte)) return byte.Parse(value);
+            if (type == typeof(ulong)) return ulong.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            if (type == typeof(byte)) return byte.Parse(value, CultureInfo.InvariantCulture);
 
-            var f_list = num_list.Select(i => float.Parse(i)).ToArray();
+            var f_list = num_list.Select(i => float.Parse(i, CultureInfo.InvariantCulture)).ToArray();
             if (type == typeof(Vector2)) return new Vector2(f_list[0], f_list[1]);
             else if (type == typeof(Vector3)) return new Vector3(f_list[0], f_list[1], f_list[2]);
             else if (type == typeof(Vector4)) return new Vector4(f_list[0], f_list[1], f_list[2], f_list[3]);
