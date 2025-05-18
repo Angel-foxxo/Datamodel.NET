@@ -287,7 +287,7 @@ namespace Datamodel.Codecs
                 else if (type == typeof(Quaternion))
                 {
                     var q = (Quaternion)value;
-                    value = string.Join(" ", q.X, q.Y, q.Z, q.W);
+                    value = FormattableString.Invariant($"{q.X} {q.Y} {q.Z} {q.W}");
                 }
                 else if (type == typeof(Matrix4x4))
                 {
