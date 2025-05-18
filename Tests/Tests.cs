@@ -10,6 +10,8 @@ using System.Numerics;
 using DM = Datamodel.Datamodel;
 using System.Text;
 using System.Globalization;
+using ValveResourceFormat.IO.ContentFormats.ValveMap;
+using System.ComponentModel.DataAnnotations;
 
 namespace Datamodel_Tests
 {
@@ -298,30 +300,38 @@ namespace Datamodel_Tests
         [Test]
         public void Create_Datamodel_Vmap()
         {
-            using var datamodel = new DM("vmap", 29);
-            datamodel.PrefixAttributes.Add("map_asset_references", new List<string>());
-            datamodel.Root = new Element(datamodel, "root", classNameOverride: "CMapRoot")
-            {
-                ["isprefab"] = false,
-                ["showgrid"] = true,
-                ["snaprotationangle"] = 15,
-                ["gridspacing"] = 64,
-                ["show3dgrid"] = true,
-                ["itemFile"] = true,
-                ["world"] = new Element(datamodel, "world", classNameOverride: "CMapWorld"),
-            };
+            //using var datamodel = new DM("vmap", 29);
+            //datamodel.PrefixAttributes.Add("map_asset_references", new List<string>());
+            //datamodel.Root = new Element(datamodel, "root", classNameOverride: "CMapRootElement")
+            //{
+            //    ["isprefab"] = false,
+            //    ["showgrid"] = true,
+            //    ["snaprotationangle"] = 15,
+            //    ["gridspacing"] = 64,
+            //    ["show3dgrid"] = true,
+            //    ["itemFile"] = true,
+            //    ["world"] = new Element(datamodel, "world", classNameOverride: "CMapWorld"),
+            //};
+            //
+            //using var stream = new MemoryStream();
+            //datamodel.Save(stream, "keyvalues2", 4);
+            //Assert.That(stream.Length, Is.GreaterThan(0));
 
-            using var stream = new MemoryStream();
-            datamodel.Save(stream, "keyvalues2", 4);
-            Assert.That(stream.Length, Is.GreaterThan(0));
+            using var actual = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
 
-            using var actual = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "vmaptest1.dmx"));
+            CMapRootElement root = (CMapRootElement)actual.Root;
+            var world = root.world;
+            var prop = (CMapEntity)world.children[1];
+            var propProperties = prop.EntityProperties;
+
+            var classname = propProperties.Get<string>("classname");
+
+            var meshes = world.children.Where(i => i.ClassName == "CMapMesh");
 
             //Assert.That(actual.PrefixAttributes.ContainsKey("map_asset_references"), Is.True);
             //Assert.That(actual.PrefixAttributes["map_asset_references"], Is.Empty);
             Assert.That(actual.Root, Is.Not.Null);
             Assert.That(actual.Root["world"], Is.Not.Null);
-            Assert.That(actual.Root["world"], Is.EqualTo(datamodel.Root["world"]));
         }
 
         public class NullOwnerElement

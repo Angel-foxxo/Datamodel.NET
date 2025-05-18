@@ -9,6 +9,7 @@ using System.Runtime.Serialization;
 using System.Security;
 using System.Numerics;
 using CodecRegistration = System.Tuple<string, int>;
+using System.Reflection;
 
 namespace Datamodel
 {
@@ -231,18 +232,18 @@ namespace Datamodel
         /// </summary>
         /// <param name="stream">The input Stream.</param>
         /// <param name="defer_mode">How to handle deferred loading.</param>
-        public static Datamodel Load(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic)
+        public static Datamodel Load(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic, bool attemptReflection = false)
         {
-            return Load_Internal(stream, defer_mode);
+            return Load_Internal(stream, Assembly.GetCallingAssembly(), defer_mode, attemptReflection);
         }
         /// <summary>
         /// Loads a Datamodel from a byte array.
         /// </summary>
         /// <param name="stream">The input Stream.</param>
         /// <param name="defer_mode">How to handle deferred loading.</param>
-        public static Datamodel Load(byte[] data, DeferredMode defer_mode = DeferredMode.Automatic)
+        public static Datamodel Load(byte[] data, DeferredMode defer_mode = DeferredMode.Automatic, bool attemptReflection = false)
         {
-            return Load_Internal(new MemoryStream(data, true), defer_mode);
+            return Load_Internal(new MemoryStream(data, true), Assembly.GetCallingAssembly(), defer_mode, attemptReflection);
         }
 
         /// <summary>
@@ -250,13 +251,13 @@ namespace Datamodel
         /// </summary>
         /// <param name="path">The source file path.</param>
         /// <param name="defer_mode">How to handle deferred loading.</param>
-        public static Datamodel Load(string path, DeferredMode defer_mode = DeferredMode.Automatic)
+        public static Datamodel Load(string path, DeferredMode defer_mode = DeferredMode.Automatic, bool attemptReflection = false)
         {
             var stream = File.OpenRead(path);
             Datamodel dm = null;
             try
             {
-                dm = Load_Internal(stream, defer_mode);
+                dm = Load_Internal(stream, Assembly.GetCallingAssembly(), defer_mode, attemptReflection);
                 return dm;
             }
             finally
@@ -265,7 +266,7 @@ namespace Datamodel
             }
         }
 
-        private static Datamodel Load_Internal(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic)
+        private static Datamodel Load_Internal(Stream stream, Assembly callingAssembly, DeferredMode defer_mode = DeferredMode.Automatic, bool attemptReflection = false)
         {
             stream.Seek(0, SeekOrigin.Begin);
             var header = string.Empty;
@@ -292,7 +293,7 @@ namespace Datamodel
 
             ICodec codec = GetCodec(encoding, encoding_version);
 
-            var dm = codec.Decode(encoding, encoding_version, format, format_version, stream, defer_mode);
+            var dm = codec.Decode(encoding, encoding_version, format, format_version, stream, defer_mode, callingAssembly, attemptReflection);
             if (defer_mode == DeferredMode.Automatic && codec is IDeferredAttributeCodec deferredCodec)
             {
                 dm.Stream = stream;

@@ -5,6 +5,8 @@ using System.Text;
 using System.Numerics;
 using System.IO;
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Datamodel.Codecs
 {
@@ -344,8 +346,15 @@ namespace Datamodel.Codecs
             throw new ArgumentException(type == null ? "No type provided to GetValue()" : "Cannot read value of type " + type.Name);
         }
 
-        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection)
         {
+            Dictionary<string, Type> callingTypes = new();
+
+            foreach (var classType in callingAssembly.DefinedTypes)
+            {
+                callingTypes.Add(classType.Name, classType);
+            }
+
             stream.Seek(0, SeekOrigin.Begin);
             while (true)
             {
@@ -383,7 +392,39 @@ namespace Datamodel.Codecs
                 var id_bits = Reader.ReadBytes(16);
                 var id = new Guid(BitConverter.IsLittleEndian ? id_bits : id_bits.Reverse().ToArray());
 
-                var elem = new Element(dm, name, id, type);
+                Element? elem = null;
+                var matchedType = callingTypes.TryGetValue(type, out var classType);
+
+                if(matchedType)
+                {
+                    var isElementDerived = IsElementDerived(classType);
+                    if (isElementDerived && classType.Name == type)
+                    {
+                        Type derivedType = classType;
+                
+                        ConstructorInfo? constructor = typeof(Element).GetConstructor(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                            null,
+                            new Type[] { typeof(Datamodel), typeof(string), typeof(Guid), typeof(string) },
+                            null
+                        );
+                
+                        if (constructor == null)
+                        {
+                            throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
+                        }
+                
+                        object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
+                        constructor.Invoke(uninitializedObject, new object[] { dm, name, id, type });
+                
+                        elem = (Element?)uninitializedObject;
+                    }
+                }
+                
+                if (elem == null)
+                {
+                    elem = new Element(dm, name, id, type);
+                }
             }
 
             // read attributes (or not, if we're deferred)
@@ -396,8 +437,7 @@ namespace Datamodel.Codecs
                 foreach (var i in Enumerable.Range(0, num_attrs))
                 {
                     var name = StringDict.ReadString();
-
-                    if (defer_mode == DeferredMode.Automatic)
+                    if (defer_mode == DeferredMode.Automatic && attemptReflection == false)
                     {
                         CodecUtilities.AddDeferredAttribute(elem, name, Reader.BaseStream.Position);
                         SkipAttribute();
@@ -408,6 +448,7 @@ namespace Datamodel.Codecs
                     }
                 }
             }
+
             return dm;
         }
 
@@ -760,6 +801,28 @@ namespace Datamodel.Codecs
 
                 throw new InvalidOperationException("Unrecognised output Type.");
             }
+        }
+
+        bool IsElementDerived(Type type)
+        {
+            var elementType = typeof(Element);
+
+            while (type.BaseType != elementType)
+            {
+                var baseType = type.BaseType;
+
+                if (baseType != null)
+                {
+                    type = baseType;
+                }
+                else
+                {
+                    return type == elementType ? true : false;
+                }
+
+            }
+
+            return type.BaseType == elementType ? true : false;
         }
 
         class DmxBinaryWriter : BinaryWriter

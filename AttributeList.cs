@@ -9,6 +9,7 @@ using System.Numerics;
 
 using AttrKVP = System.Collections.Generic.KeyValuePair<string, object>;
 using System.Reflection;
+using System.IO;
 
 namespace Datamodel
 {
@@ -243,11 +244,21 @@ namespace Datamodel
                     throw new AttributeTypeException("Elements are not supported as prefix attributes.");
 
                 var prop_attr = (PropertyInfo)PropertyInfos[name];
+
                 if (prop_attr != null)
                 {
-                    throw new InvalidOperationException($"Cannot set the value of a property-derived attribute by key. Assign to '{prop_attr.Name}' directly instead.");
-                }
+                    PropertyInfo prop = GetType().GetProperty(prop_attr.Name, BindingFlags.Public | BindingFlags.Instance);
 
+                    if (null != prop && prop.CanWrite)
+                    {
+                        prop.SetValue(this, value);
+                    }
+                    else
+                    {
+                        throw new InvalidDataException("Property of deserialisation class must be writeable, make sure it's public and has a public setter");
+                    }
+                }
+                
                 Attribute old_attr;
                 Attribute new_attr;
                 int old_index = -1;

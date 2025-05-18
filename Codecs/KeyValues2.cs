@@ -6,6 +6,7 @@ using System.Numerics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Globalization;
+using System.Reflection;
 
 namespace Datamodel.Codecs
 {
@@ -597,7 +598,7 @@ namespace Datamodel.Codecs
             else throw new ArgumentException($"Internal error: ParseValue passed unsupported type: {type}.");
         }
 
-        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection)
         {
             DM = new Datamodel(format, format_version);
 

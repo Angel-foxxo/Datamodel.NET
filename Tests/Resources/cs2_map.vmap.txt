@@ -91,7 +91,7 @@
 
 		"nextDecalID" "int" "0"
 		"fixupEntityNames" "bool" "1"
-		"mapUsageType" "string" "standard"
+		"mapUsageType" "string" "hellyea"
 		"origin" "vector3" "0 0 0"
 		"angles" "qangle" "0 0 0"
 		"scales" "vector3" "1 1 1"

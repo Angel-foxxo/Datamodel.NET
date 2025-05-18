@@ -161,6 +161,7 @@ namespace Datamodel
 
         #region Properties
 
+        // TODO: this could probably be sped up by caching the properties somehow
         protected override ICollection<(string Name, PropertyInfo Property)> GetPropertyDerivedAttributeList()
         {
             var type = GetType();
@@ -176,8 +177,6 @@ namespace Datamodel
                 if (property.GetIndexParameters().Length == 0 && property.DeclaringType.IsSubclassOf(typeof(Element)))
                 {
                     var name = property.Name;
-                    name = property.DeclaringType.GetCustomAttribute<Format.AttributeNamingConventionAttribute>()?
-                        .GetAttributeName(name, property.PropertyType) ?? name;
                     name = property.GetCustomAttribute<Format.DMProperty>()?.Name ?? name;
 
                     properties.Add((name, property));

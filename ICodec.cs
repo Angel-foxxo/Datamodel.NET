@@ -2,6 +2,7 @@
 using System.Linq;
 using System.IO;
 using System.Numerics;
+using System.Reflection;
 
 namespace Datamodel.Codecs
 {
@@ -29,7 +30,7 @@ namespace Datamodel.Codecs
         /// <param name="stream">The input stream. Its position will always be 0. Do not dispose.</param>
         /// <param name="defer_mode">The deferred loading mode specified by the caller. Only relevant to implementers of <see cref="IDeferredAttributeCodec"/></param>
         /// <returns></returns>
-        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode);
+        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection);
     }
 
     /// <summary>
