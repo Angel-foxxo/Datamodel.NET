@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Numerics;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Globalization;
 
 namespace Datamodel.Codecs
 {
@@ -254,55 +256,59 @@ namespace Datamodel.Codecs
                 if (type == typeof(bool))
                     value = (bool)value ? 1 : 0;
                 else if (type == typeof(float))
-                    value = (float)value;
+                    value = FormattableString.Invariant($"{(float)value}");
                 else if (type == typeof(byte[]))
-                    value = BitConverter.ToString((byte[])value).Replace("-", string.Empty);
+                    value = BitConverter.ToString((byte[])value).Replace("-", string.Empty, false, CultureInfo.InvariantCulture);
                 else if (type == typeof(TimeSpan))
-                    value = ((TimeSpan)value).TotalSeconds;
+                    value = ((TimeSpan)value).TotalSeconds.ToString(CultureInfo.InvariantCulture);
                 else if (type == typeof(Color))
                 {
-                    var c = (Color)value;
-                    value = string.Join(" ", new int[] { c.R, c.G, c.B, c.A });
+                    var castValue = (Color)value;
+                    value = FormattableString.Invariant($"{castValue.R} {castValue.G} {castValue.B} {castValue.A}");
                 }
                 else if (value is ulong ulong_value)
-                    value = $"0x{ulong_value:X}";
+                    value = $"0x{ulong_value.ToString(CultureInfo.InvariantCulture):X}";
                 else if (type == typeof(Vector2))
                 {
-                    var arr = new float[2];
-                    ((Vector2)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector2)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y}");
                 }
                 else if (type == typeof(Vector3))
                 {
-                    var arr = new float[3];
-                    ((Vector3)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector3)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z}");
                 }
                 else if (type == typeof(Vector4))
                 {
-                    var arr = new float[4];
-                    ((Vector4)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector4)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z} {castValue.W}");
                 }
                 else if (type == typeof(Quaternion))
                 {
-                    var q = (Quaternion)value;
-                    value = FormattableString.Invariant($"{q.X} {q.Y} {q.Z} {q.W}");
+                    var castValue = (Quaternion)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z} {castValue.W}");
                 }
                 else if (type == typeof(Matrix4x4))
                 {
-                    var m = (Matrix4x4)value;
-                    value = string.Join(" ", m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
+                    var castValue = (Matrix4x4)value;
+                    var matrixString = 
+                        $"{castValue.M11} {castValue.M12} {castValue.M13} {castValue.M14}" +
+                        $" {castValue.M21} {castValue.M22} {castValue.M23} {castValue.M24}" +
+                        $" {castValue.M31} {castValue.M32} {castValue.M33} {castValue.M34}" +
+                        $" {castValue.M41} {castValue.M42} {castValue.M43} {castValue.M44}";
+
+                    value = FormattableString.Invariant(FormattableStringFactory.Create(matrixString));
                 }
                 else if (value is QAngle qangle_value)
                 {
-                    value = string.Join(" ", (int)qangle_value.Pitch, (int)qangle_value.Yaw, (int)qangle_value.Roll);
+                    var castValue = (QAngle)value;
+                    value = FormattableString.Invariant($"{castValue.Pitch} {castValue.Yaw} {castValue.Roll}");
                 }
 
                 if (in_array)
-                    Writer.Write(String.Format(" \"{0}\",", value.ToString()));
+                    Writer.Write(FormattableString.Invariant($" \"{value}\","));
                 else
-                    Writer.WriteTokenLine(name, TypeNames[type], value.ToString());
+                    Writer.WriteTokenLine(name, TypeNames[type], FormattableString.Invariant($"{value}"));
             }
 
         }
