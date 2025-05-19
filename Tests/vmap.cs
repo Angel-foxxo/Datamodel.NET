@@ -2,26 +2,27 @@
 using System.Numerics;
 using DMElement = Datamodel.Element;
 
-namespace ValveResourceFormat.IO.ContentFormats.ValveMap;
+namespace consoleTestApp.VMAP;
 
 /// <summary>
 ///  Valve Map (VMAP) format version 29.
 /// </summary>
 internal class CMapRootElement : DMElement
 {
-    public bool IsPrefab { get; set; }
-    public int EditorBuild { get; set; } = 8600;
-    public int EditorVersion { get; set; } = 400;
-    public bool ShowGrid { get; set; } = true;
-    public int SnapRotationAngle { get; set; } = 15;
-    public float GridSpacing { get; set; } = 64;
-    public bool Show3DGrid { get; set; } = true;
+    public bool isprefab { get; set; }
+    public int editorbuild { get; set; } = 8600;
+    public int editorversion { get; set; } = 400;
+    public bool showgrid { get; set; } = true;
+    public int snaprotationangle { get; set; } = 15;
+    public float gridspacing { get; set; } = 64;
+    public bool show3dgrid { get; set; } = true;
     [DMProperty(name: "itemFile")]
-    public string ItemFile { get; set; } = string.Empty;
-    public CStoredCamera DefaultCamera { get; set; } = [];
+    public string Itemfile { get; set; } = string.Empty;
+    public CStoredCamera defaultcamera { get; set; } = [];
     [DMProperty(name: "3dcameras")]
     public CStoredCameras Cameras { get; set; } = [];
     public CMapWorld world { get; set; } = [];
+    [DMProperty(name: "visbility")]
     public CVisibilityMgr Visibility { get; set; } = [];
     [DMProperty(name: "mapVariables")]
     public CMapVariableSet MapVariables { get; set; } = [];
@@ -40,8 +41,8 @@ internal class CMapRootElement : DMElement
 
 internal class CStoredCamera : DMElement
 {
-    public Vector3 Position { get; set; } = new Vector3(0, -1000, 1000);
-    public Vector3 LookAt { get; set; }
+    public Vector3 position { get; set; } = new Vector3(0, -1000, 1000);
+    public Vector3 lookat { get; set; }
 }
 
 
@@ -49,7 +50,7 @@ internal class CStoredCameras : DMElement
 {
     [DMProperty(name: "activecamera")]
     public int ActiveCameraIndex { get; set; } = -1;
-    public Datamodel.ElementArray Cameras { get; set; } = [];
+    public Datamodel.ElementArray cameras { get; set; } = [];
 }
 
 
@@ -74,18 +75,18 @@ internal abstract class MapNode : DMElement
 
 internal class CMapPrefab : MapNode
 {
-    public bool FixupEntityNames { get; set; } = true;
-    public bool LoadAtRuntime { get; set; }
-    public bool LoadIfNested { get; set; } = true;
-    public string TargetMapPath { get; set; } = string.Empty;
-    public string TargetName { get; set; } = string.Empty;
+    public bool fixupEntityNames { get; set; } = true;
+    public bool loadAtRuntime { get; set; }
+    public bool loadIfNested { get; set; } = true;
+    public string targetMapPath { get; set; } = string.Empty;
+    public string targetName { get; set; } = string.Empty;
 }
 
 
 internal abstract class BaseEntity : MapNode
 {
-    public DmePlugList RelayPlugData { get; set; } = [];
-    public Datamodel.ElementArray ConnectionsData { get; set; } = [];
+    public DmePlugList relayPlugData { get; set; } = [];
+    public Datamodel.ElementArray connectionsData { get; set; } = [];
     [DMProperty(name: "entity_properties")]
     public EditGameClassProps EntityProperties { get; set; } = [];
 
@@ -112,22 +113,22 @@ internal abstract class BaseEntity : MapNode
 
 internal class DmePlugList : DMElement
 {
-    public Datamodel.StringArray Names { get; set; } = [];
-    public Datamodel.IntArray DataTypes { get; set; } = [];
-    public Datamodel.IntArray PlugTypes { get; set; } = [];
-    public Datamodel.StringArray Descriptions { get; set; } = [];
+    public Datamodel.StringArray names { get; set; } = [];
+    public Datamodel.IntArray dataTypes { get; set; } = [];
+    public Datamodel.IntArray plugTypes { get; set; } = [];
+    public Datamodel.StringArray descriptions { get; set; } = [];
 }
 
 
 internal class DmeConnectionData : DMElement
 {
-    public string OutputName { get; set; } = string.Empty;
-    public int TargetType { get; set; }
-    public string TargetName { get; set; } = string.Empty;
-    public string InputName { get; set; } = string.Empty;
-    public string OverrideParam { get; set; } = string.Empty;
-    public float Delay { get; set; }
-    public int TimesToFire { get; set; } = -1;
+    public string outputName { get; set; } = string.Empty;
+    public int targetType { get; set; }
+    public string targetName { get; set; } = string.Empty;
+    public string inputName { get; set; } = string.Empty;
+    public string overrideParam { get; set; } = string.Empty;
+    public float delay { get; set; }
+    public int timesToFire { get; set; } = -1;
 }
 
 /// <summary>
@@ -143,9 +144,9 @@ internal class EditGameClassProps : DMElement
 
 internal class CMapWorld : BaseEntity
 {
-    public int NextDecalID { get; set; }
-    public bool FixupEntityNames { get; set; } = true;
-    public string MapUsageType { get; set; } = "standard";
+    public int nextDecalID { get; set; }
+    public bool fixupEntityNames { get; set; } = true;
+    public string mapUsageType { get; set; } = "standard";
 
     public CMapWorld()
     {
@@ -156,17 +157,17 @@ internal class CMapWorld : BaseEntity
 
 internal class CVisibilityMgr : MapNode
 {
-    public Datamodel.ElementArray Nodes { get; set; } = [];
-    public Datamodel.IntArray HiddenFlags { get; set; } = [];
+    public Datamodel.ElementArray nodes { get; set; } = [];
+    public Datamodel.IntArray hiddenFlags { get; set; } = [];
 }
 
 
 internal class CMapVariableSet : DMElement
 {
-    public Datamodel.StringArray VariableNames { get; set; } = [];
-    public Datamodel.StringArray VariableValues { get; set; } = [];
-    public Datamodel.StringArray VariableTypeNames { get; set; } = [];
-    public Datamodel.StringArray VariableTypeParameters { get; set; } = [];
+    public Datamodel.StringArray variableNames { get; set; } = [];
+    public Datamodel.StringArray variableValues { get; set; } = [];
+    public Datamodel.StringArray variableTypeNames { get; set; } = [];
+    public Datamodel.StringArray variableTypeParameters { get; set; } = [];
     [DMProperty(name: "m_ChoiceGroups")]
     public Datamodel.ElementArray ChoiceGroups { get; set; } = [];
 }
@@ -174,28 +175,28 @@ internal class CMapVariableSet : DMElement
 
 internal class CMapSelectionSet : DMElement
 {
-    public Datamodel.ElementArray Children { get; set; } = [];
-    public string SelectionSetName { get; set; } = string.Empty;
-    public CObjectSelectionSetDataElement SelectionSetData { get; set; } = [];
+    public Datamodel.ElementArray children { get; set; } = [];
+    public string selectionSetName { get; set; } = string.Empty;
+    public CObjectSelectionSetDataElement selectionSetData { get; set; } = [];
 
     public CMapSelectionSet() { }
     public CMapSelectionSet(string name)
     {
-        SelectionSetName = name;
+        selectionSetName = name;
     }
 }
 
 
 internal class CObjectSelectionSetDataElement : DMElement
 {
-    public Datamodel.ElementArray SelectedObjects { get; set; } = [];
+    public Datamodel.ElementArray selectedObjects { get; set; } = [];
 }
 
 
 internal class CMapEntity : BaseEntity
 {
-    public Vector3 HitNormal { get; set; }
-    public bool IsProceduralEntity { get; set; }
+    public Vector3 hitNormal { get; set; }
+    public bool isProceduralEntity { get; set; }
 }
 
 
@@ -204,8 +205,8 @@ internal class CMapInstance : BaseEntity
     /// <summary>
     /// A target <see cref="CMapGroup"/> to instance. With custom tint and transform.
     /// </summary>
-    public DMElement? Target { get; set; }
-    public Datamodel.Color TintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
+    public DMElement? target { get; set; }
+    public Datamodel.Color tintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
 }
 
 internal class CMapGroup : MapNode
@@ -215,19 +216,19 @@ internal class CMapGroup : MapNode
 
 internal class CMapWorldLayer : CMapGroup
 {
-    public string WorldLayerName { get; set; } = string.Empty;
+    public string worldLayerName { get; set; } = string.Empty;
 }
 
 
 internal class CMapMesh : MapNode
 {
-    public string CubeMapName { get; set; } = string.Empty;
-    public string LightGroup { get; set; } = string.Empty;
+    public string cubeMapName { get; set; } = string.Empty;
+    public string lightGroup { get; set; } = string.Empty;
     [DMProperty(name: "visexclude")]
     public bool VisExclude { get; set; }
     [DMProperty(name: "renderwithdynamic")]
     public bool RenderWithDynamic { get; set; }
-    public bool DisableHeightDisplacement { get; set; }
+    public bool disableHeightDisplacement { get; set; }
     [DMProperty(name: "fademindist")]
     public float FadeMinDist { get; set; } = -1;
     [DMProperty(name: "fademaxdist")]
@@ -236,21 +237,21 @@ internal class CMapMesh : MapNode
     public bool BakeLighting { get; set; } = true;
     [DMProperty(name: "precomputelightprobes")]
     public bool PrecomputeLightProbes { get; set; } = true;
-    public bool RenderToCubemaps { get; set; } = true;
-    public int DisableShadows { get; set; }
-    public float SmoothingAngle { get; set; } = 40f;
-    public Datamodel.Color TintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
+    public bool renderToCubemaps { get; set; } = true;
+    public int disableShadows { get; set; }
+    public float smoothingAngle { get; set; } = 40f;
+    public Datamodel.Color tintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
     [DMProperty(name: "renderAmt")]
     public int RenderAmount { get; set; } = 255;
-    public string PhysicsType { get; set; } = "default";
-    public string PhysicsGroup { get; set; } = string.Empty;
-    public string PhysicsInteractsAs { get; set; } = string.Empty;
-    public string PhysicsInteractWsith { get; set; } = string.Empty;
-    public string PhysicsInteractsExclude { get; set; } = string.Empty;
+    public string physicsType { get; set; } = "default";
+    public string physicsGroup { get; set; } = string.Empty;
+    public string physicsInteractsAs { get; set; } = string.Empty;
+    public string physicsInteractWsith { get; set; } = string.Empty;
+    public string physicsInteractsExclude { get; set; } = string.Empty;
     public CDmePolygonMesh meshData { get; set; } = [];
-    public bool UseAsOccluder { get; set; }
-    public bool PhysicsSimplificationOverride { get; set; }
-    public float PhysicsSimplificationError { get; set; }
+    public bool useAsOccluder { get; set; }
+    public bool physicsSimplificationOverride { get; set; }
+    public float physicsSimplificationError { get; set; }
 }
 
 
@@ -259,79 +260,79 @@ internal class CDmePolygonMesh : MapNode
     /// <summary>
     /// Index to one of the edges stemming from this vertex.
     /// </summary>
-    public Datamodel.IntArray VertexEdgeIndices { get; set; } = [];
+    public Datamodel.IntArray vertexEdgeIndices { get; set; } = [];
 
     /// <summary>
     /// Index to the <see cref="VertexData"/> streams.
     /// </summary>
-    public Datamodel.IntArray VertexDataIndices { get; set; } = [];
+    public Datamodel.IntArray vertexDataIndices { get; set; } = [];
 
     /// <summary>
     /// The destination vertex of this edge.
     /// </summary>
-    public Datamodel.IntArray EdgeVertexIndices { get; set; } = [];
+    public Datamodel.IntArray edgeVertexIndices { get; set; } = [];
 
     /// <summary>
     /// Index to the opposite/twin edge.
     /// </summary>
-    public Datamodel.IntArray EdgeOppositeIndices { get; set; } = [];
+    public Datamodel.IntArray edgeOppositeIndices { get; set; } = [];
 
     /// <summary>
     /// Index to the next edge in the loop, in counter-clockwise order.
     /// </summary>
-    public Datamodel.IntArray EdgeNextIndices { get; set; } = [];
+    public Datamodel.IntArray edgeNextIndices { get; set; } = [];
 
     /// <summary>
     /// Per half-edge index to the adjacent face. -1 if void (open edge).
     /// </summary>
-    public Datamodel.IntArray EdgeFaceIndices { get; set; } = [];
+    public Datamodel.IntArray edgeFaceIndices { get; set; } = [];
 
     /// <summary>
     /// Per half-edge index to the <see cref="EdgeData"/> streams.
     /// </summary>
-    public Datamodel.IntArray EdgeDataIndices { get; set; } = [];
+    public Datamodel.IntArray edgeDataIndices { get; set; } = [];
 
     /// <summary>
     /// Per half-edge index to the <see cref="FaceVertexData"/> streams.
     /// </summary>
-    public Datamodel.IntArray EdgeVertexDataIndices { get; set; } = [];
+    public Datamodel.IntArray edgeVertexDataIndices { get; set; } = [];
 
     /// <summary>
     /// Per face index to one of the *inner* edges encapsulating this face.
     /// </summary>
-    public Datamodel.IntArray FaceEdgeIndices { get; set; } = [];
+    public Datamodel.IntArray faceEdgeIndices { get; set; } = [];
 
     /// <summary>
     /// Per face index to the <see cref="FaceData"/> streams.
     /// </summary>
-    public Datamodel.IntArray FaceDataIndices { get; set; } = [];
+    public Datamodel.IntArray faceDataIndices { get; set; } = [];
 
     /// <summary>
     /// List of material names. Indexed by the 'meshindex' <see cref="FaceData"/> stream.
     /// </summary>
-    public Datamodel.StringArray Materials { get; set; } = [];
+    public Datamodel.StringArray materials { get; set; } = [];
 
     /// <summary>
     /// Stores vertex positions.
     /// </summary>
-    public CDmePolygonMeshDataArray VertexData { get; set; } = [];
+    public CDmePolygonMeshDataArray vertexData { get; set; } = [];
 
     /// <summary>
     /// Stores vertex uv, normal, tangent, etc. Two per vertex (for each half?).
     /// </summary>
-    public CDmePolygonMeshDataArray FaceVertexData { get; set; } = [];
+    public CDmePolygonMeshDataArray faceVertexData { get; set; } = [];
 
     /// <summary>
     /// Stores edge data such as soft or hard normals.
     /// </summary>
-    public CDmePolygonMeshDataArray EdgeData { get; set; } = [];
+    public CDmePolygonMeshDataArray edgeData { get; set; } = [];
 
     /// <summary>
     /// Stores face data such as texture scale, UV offset, material, lightmap bias.
     /// </summary>
-    public CDmePolygonMeshDataArray FaceData { get; set; } = [];
+    public CDmePolygonMeshDataArray faceData { get; set; } = [];
 
-    public CDmePolygonMeshSubdivisionData SubdivisionData { get; set; } = [];
+    public CDmePolygonMeshSubdivisionData subdivisionData { get; set; } = [];
 }
 
 
@@ -341,30 +342,30 @@ internal class CDmePolygonMeshDataArray : DMElement
     /// <summary>
     /// Array of <see cref="CDmePolygonMeshDataStream"/>.
     /// </summary>
-    public Datamodel.ElementArray Streams { get; set; } = [];
+    public Datamodel.ElementArray streams { get; set; } = [];
 }
 
 
 internal class CDmePolygonMeshSubdivisionData : DMElement
 {
-    public Datamodel.IntArray SubdivisionLevels { get; set; } = [];
+    public Datamodel.IntArray subdivisionLevels { get; set; } = [];
     /// <summary>
     /// Array of <see cref="CDmePolygonMeshDataStream"/>.
     /// </summary>
-    public Datamodel.ElementArray Streams { get; set; } = [];
+    public Datamodel.ElementArray streams { get; set; } = [];
 }
 
 
 internal class CDmePolygonMeshDataStream<T> : DMElement
 {
-    public string StandardAttributeName { get; set; } = string.Empty;
-    public string SemanticName { get; set; } = string.Empty;
-    public int SemanticIndex { get; set; }
-    public int VertexBufferLocation { get; set; }
-    public int DataStateFlags { get; set; }
-    public DMElement? SubdivisionBinding { get; set; }
+    public string standardAttributeName { get; set; } = string.Empty;
+    public string semanticName { get; set; } = string.Empty;
+    public int semanticIndex { get; set; }
+    public int vertexBufferLocation { get; set; }
+    public int dataStateFlags { get; set; }
+    public DMElement? subdivisionBinding { get; set; }
     /// <summary>
     /// An int, vector2, vector3, or vector4 array.
     /// </summary>
-    public required Datamodel.Array<T> Data { get; set; }
+    public required Datamodel.Array<T> data { get; set; }
 }
