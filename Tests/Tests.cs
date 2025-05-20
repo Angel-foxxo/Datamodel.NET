@@ -8,10 +8,8 @@ using NUnit.Framework;
 using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
-using System.Text;
 using System.Globalization;
-using ValveResourceFormat.IO.ContentFormats.ValveMap;
-using System.ComponentModel.DataAnnotations;
+using VMAP;
 
 namespace Datamodel_Tests
 {
@@ -298,40 +296,27 @@ namespace Datamodel_Tests
 
 
         [Test]
-        public void Create_Datamodel_Vmap()
+        public void LoadVmap_Reflection_Binary()
         {
-            //using var datamodel = new DM("vmap", 29);
-            //datamodel.PrefixAttributes.Add("map_asset_references", new List<string>());
-            //datamodel.Root = new Element(datamodel, "root", classNameOverride: "CMapRootElement")
-            //{
-            //    ["isprefab"] = false,
-            //    ["showgrid"] = true,
-            //    ["snaprotationangle"] = 15,
-            //    ["gridspacing"] = 64,
-            //    ["show3dgrid"] = true,
-            //    ["itemFile"] = true,
-            //    ["world"] = new Element(datamodel, "world", classNameOverride: "CMapWorld"),
-            //};
-            //
-            //using var stream = new MemoryStream();
-            //datamodel.Save(stream, "keyvalues2", 4);
-            //Assert.That(stream.Length, Is.GreaterThan(0));
+            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
 
-            using var actual = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
+            Assert.AreEqual(unserialisedVmap.Root.GetType(), typeof(CMapRootElement));
 
-            CMapRootElement root = (CMapRootElement)actual.Root;
+            CMapRootElement root = (CMapRootElement)unserialisedVmap.Root;
+
+            Assert.AreEqual(root.world.GetType(), typeof(CMapWorld));
+
             var world = root.world;
-            var prop = (CMapEntity)world.children[1];
-            var propProperties = prop.EntityProperties;
 
+            var props = world.children.Where(i => i.ClassName == "CMapEntity").OfType<CMapEntity>().ToList();
+
+            var propProperties = props[0].EntityProperties;
             var classname = propProperties.Get<string>("classname");
 
-            var meshes = world.children.Where(i => i.ClassName == "CMapMesh");
+            var meshes = world.children.Where(i => i.ClassName == "CMapMesh").OfType<CMapMesh>().ToList();
+            var mesh = meshes[0];
 
-            //Assert.That(actual.PrefixAttributes.ContainsKey("map_asset_references"), Is.True);
-            //Assert.That(actual.PrefixAttributes["map_asset_references"], Is.Empty);
-            Assert.That(actual.Root, Is.Not.Null);
-            Assert.That(actual.Root["world"], Is.Not.Null);
+            Assert.That(unserialisedVmap.PrefixAttributes["map_asset_references"], Is.Not.Empty);
         }
 
         public class NullOwnerElement
@@ -415,16 +400,6 @@ namespace Datamodel_Tests
                 var myprop = elem["MyProperty"];
 
                 Assert.That(myprop, Is.EqualTo(1337));
-            }
-
-            [Test]
-            public void PropertySetByKey_Throws()
-            {
-                var elem = new CustomElement();
-
-                var ex = Assert.Throws(typeof(InvalidOperationException), () => elem["MyProperty"] = 5);
-
-                Assert.That(ex.Message, Does.Contain("Cannot set the value of a property-derived attribute by key"));
             }
 
             [Test]
@@ -600,7 +575,7 @@ namespace Datamodel_Tests
         [Test, TestCaseSource(nameof(GetDmxFiles))]
         public void Unserialize(string path)
         {
-            var dm = DM.Load(path);
+            var dm = DM.Load(path, Datamodel.Codecs.DeferredMode.Automatic);
             PrintContents(dm);
             dm.Dispose();
         }

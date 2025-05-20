@@ -249,14 +249,27 @@ namespace Datamodel
                 {
                     PropertyInfo prop = GetType().GetProperty(prop_attr.Name, BindingFlags.Public | BindingFlags.Instance);
 
-                    if (null != prop && prop.CanWrite)
+                    if (prop != null && prop.CanWrite)
                     {
+                        // were actually fine with this being null, it will just set the value to null
+                        // but need to check so the type check doesn't fail if it is null
+                        if(value != null)
+                        {
+                            var valueType = value.GetType();
+                            if (prop.PropertyType != valueType)
+                            {
+                                throw new InvalidDataException($"class property '{prop.Name}' with type '{prop.PropertyType}' does not match the type '{valueType}' of the value being set, this is likely a mismatch between the real class and the class from the datamodel");
+                            }
+                        }
+
                         prop.SetValue(this, value);
                     }
                     else
                     {
                         throw new InvalidDataException("Property of deserialisation class must be writeable, make sure it's public and has a public setter");
                     }
+
+                    return;
                 }
                 
                 Attribute old_attr;

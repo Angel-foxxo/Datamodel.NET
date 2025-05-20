@@ -15,9 +15,6 @@
     <Compile Remove="Resources\vmap.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="vmap.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Datamodel.NET.csproj" />
   </ItemGroup>
   <ItemGroup>

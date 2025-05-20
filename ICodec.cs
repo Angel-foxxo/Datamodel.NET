@@ -3,6 +3,7 @@ using System.Linq;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace Datamodel.Codecs
 {
@@ -30,8 +31,30 @@ namespace Datamodel.Codecs
         /// <param name="stream">The input stream. Its position will always be 0. Do not dispose.</param>
         /// <param name="defer_mode">The deferred loading mode specified by the caller. Only relevant to implementers of <see cref="IDeferredAttributeCodec"/></param>
         /// <returns></returns>
-        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection);
+        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, ReflectionParams reflectionParams);
     }
+
+    /// <summary>
+    /// Parameters for reflection based deserialisation
+    /// By default it will look for types in the calling assembly (the one which made this class)
+    /// </summary>
+    public class ReflectionParams
+    {
+        public bool AttemptReflection;
+        public List<Type> AdditionalTypes;
+        public List<Assembly> AssembliesToSearch;
+
+        /// <param name="attemptReflection">If to use reflection or not.</param>
+        /// <param name="additionalTypes">Additional types to consider when matching.</param>
+        /// <param name="assembliesToSearch">Additional assemblies to look for types in.</param>
+        public ReflectionParams(bool attemptReflection = true, List<Type>? additionalTypes = null, List<Assembly>? assembliesToSearch = null)
+        {
+            AttemptReflection = attemptReflection;
+            AdditionalTypes = additionalTypes ??= new();
+            AssembliesToSearch = assembliesToSearch ??= new();
+        }
+    }
+
 
     /// <summary>
     /// Defines methods for the deferred loading of <see cref="Attribute"/> values.
@@ -170,6 +193,29 @@ namespace Datamodel.Codecs
         {
             if (offset <= 0) throw new ArgumentOutOfRangeException(nameof(offset), "Address must be greater than 0.");
             elem.Add(key, offset);
+        }
+
+        public static Dictionary<string, Type> GetReflectionTypes(ReflectionParams reflectionParams)
+        {
+            Dictionary<string, Type> types = new();
+
+            if (reflectionParams.AttemptReflection)
+            {
+                foreach (var assembly in reflectionParams.AssembliesToSearch)
+                {
+                    foreach (var classType in assembly.DefinedTypes)
+                    {
+                        types.TryAdd(classType.Name, classType);
+                    }
+                }
+
+                foreach (var type in reflectionParams.AdditionalTypes)
+                {
+                    types.TryAdd(type.Name, type);
+                }
+            }
+
+            return types;
         }
     }
 

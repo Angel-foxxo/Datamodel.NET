@@ -2,7 +2,7 @@
 using System.Numerics;
 using DMElement = Datamodel.Element;
 
-namespace consoleTestApp.VMAP;
+namespace VMAP;
 
 /// <summary>
 ///  Valve Map (VMAP) format version 29.
@@ -205,7 +205,7 @@ internal class CMapInstance : BaseEntity
     /// <summary>
     /// A target <see cref="CMapGroup"/> to instance. With custom tint and transform.
     /// </summary>
-    public DMElement? target { get; set; }
+    public CMapGroup? target { get; set; }
     public Datamodel.Color tintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
 }
 

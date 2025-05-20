@@ -346,14 +346,9 @@ namespace Datamodel.Codecs
             throw new ArgumentException(type == null ? "No type provided to GetValue()" : "Cannot read value of type " + type.Name);
         }
 
-        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, ReflectionParams reflectionParams)
         {
-            Dictionary<string, Type> callingTypes = new();
-
-            foreach (var classType in callingAssembly.DefinedTypes)
-            {
-                callingTypes.Add(classType.Name, classType);
-            }
+            var types = CodecUtilities.GetReflectionTypes(reflectionParams);
 
             stream.Seek(0, SeekOrigin.Begin);
             while (true)
@@ -393,9 +388,9 @@ namespace Datamodel.Codecs
                 var id = new Guid(BitConverter.IsLittleEndian ? id_bits : id_bits.Reverse().ToArray());
 
                 Element? elem = null;
-                var matchedType = callingTypes.TryGetValue(type, out var classType);
+                var matchedType = types.TryGetValue(type, out var classType);
 
-                if(matchedType)
+                if(matchedType && reflectionParams.AttemptReflection)
                 {
                     var isElementDerived = IsElementDerived(classType);
                     if (isElementDerived && classType.Name == type)
@@ -437,7 +432,7 @@ namespace Datamodel.Codecs
                 foreach (var i in Enumerable.Range(0, num_attrs))
                 {
                     var name = StringDict.ReadString();
-                    if (defer_mode == DeferredMode.Automatic && attemptReflection == false)
+                    if (defer_mode == DeferredMode.Automatic && reflectionParams.AttemptReflection == false)
                     {
                         CodecUtilities.AddDeferredAttribute(elem, name, Reader.BaseStream.Position);
                         SkipAttribute();

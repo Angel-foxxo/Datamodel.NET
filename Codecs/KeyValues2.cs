@@ -598,7 +598,7 @@ namespace Datamodel.Codecs
             else throw new ArgumentException($"Internal error: ParseValue passed unsupported type: {type}.");
         }
 
-        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, Assembly callingAssembly, bool attemptReflection)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, ReflectionParams reflectionParams)
         {
             DM = new Datamodel(format, format_version);
 
