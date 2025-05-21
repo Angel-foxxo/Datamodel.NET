@@ -294,21 +294,23 @@ namespace Datamodel_Tests
             Assert.AreEqual(0, array.Count);
         }
 
-
-        [Test]
-        public void LoadVmap_Reflection_Binary()
+        private void Test_Vmap_Reflection(Datamodel.Datamodel unserialisedVmap)
         {
-            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
-
-            Assert.AreEqual(unserialisedVmap.Root.GetType(), typeof(CMapRootElement));
+            Assert.AreEqual(typeof(CMapRootElement), unserialisedVmap.Root.GetType());
 
             CMapRootElement root = (CMapRootElement)unserialisedVmap.Root;
 
-            Assert.AreEqual(root.world.GetType(), typeof(CMapWorld));
+            Assert.AreEqual(typeof(CMapWorld), root.world.GetType());
 
             var world = root.world;
 
             var props = world.children.Where(i => i.ClassName == "CMapEntity").OfType<CMapEntity>().ToList();
+
+            var prop = props[0];
+            var propclass = prop.ClassName;
+            var proptype = prop.GetType();
+            var entityprop = prop;
+
 
             var propProperties = props[0].EntityProperties;
             var classname = propProperties.Get<string>("classname");
@@ -317,6 +319,21 @@ namespace Datamodel_Tests
             var mesh = meshes[0];
 
             Assert.That(unserialisedVmap.PrefixAttributes["map_asset_references"], Is.Not.Empty);
+
+        }
+
+        [Test]
+        public void LoadVmap_Reflection_Binary()
+        {
+            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "de_inferno_d.vmap"));
+            Test_Vmap_Reflection(unserialisedVmap);
+        }
+
+        [Test]
+        public void LoadVmap_Reflection_Text()
+        {
+            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "de_mirage_d.vmap.txt"));
+            Test_Vmap_Reflection(unserialisedVmap);
         }
 
         public class NullOwnerElement
@@ -449,7 +466,7 @@ namespace Datamodel_Tests
 
                 using var stream = new MemoryStream();
                 dm.Save(stream, "keyvalues2", 4);
-                
+
                 stream.Position = 0;
                 using (var reader = new StreamReader(stream))
                 {
@@ -469,7 +486,7 @@ namespace Datamodel_Tests
                 // binary
                 using var stream2 = new MemoryStream();
                 dm.Save(stream2, "binary", 9);
-                
+
                 stream2.Position = 0;
                 using var reader2 = new BinaryReader(stream2);
                 var bytes = reader2.ReadBytes((int)stream2.Length);

@@ -381,6 +381,27 @@ namespace Datamodel
         {
             return other != null && ID == other.ID;
         }
+
+        public static bool IsElementDerived(Type type)
+        {
+            var elementType = typeof(Element);
+
+            while (type.BaseType != elementType)
+            {
+                var baseType = type.BaseType;
+
+                if (baseType != null)
+                {
+                    type = baseType;
+                }
+                else
+                {
+                    return type == elementType ? true : false;
+                }
+            }
+
+            return type.BaseType == elementType ? true : false;
+        }
     }
 
     namespace TypeConverters

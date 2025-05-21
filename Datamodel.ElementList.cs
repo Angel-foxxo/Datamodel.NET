@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Datamodel
 {
-public partial class Datamodel
+    public partial class Datamodel
     {
         /// <summary>
         /// A collection of <see cref="Element"/>s owned by a single <see cref="Datamodel"/>.

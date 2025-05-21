@@ -392,7 +392,7 @@ namespace Datamodel.Codecs
 
                 if(matchedType && reflectionParams.AttemptReflection)
                 {
-                    var isElementDerived = IsElementDerived(classType);
+                    var isElementDerived = Element.IsElementDerived(classType);
                     if (isElementDerived && classType.Name == type)
                     {
                         Type derivedType = classType;
@@ -425,7 +425,8 @@ namespace Datamodel.Codecs
             // read attributes (or not, if we're deferred)
             foreach (var elem in dm.AllElements.ToArray())
             {
-                System.Diagnostics.Debug.Assert(!elem.Stub);
+                // assert if stub
+                Debug.Assert(!elem.Stub);
 
                 var num_attrs = Reader.ReadInt32();
 
@@ -796,28 +797,6 @@ namespace Datamodel.Codecs
 
                 throw new InvalidOperationException("Unrecognised output Type.");
             }
-        }
-
-        bool IsElementDerived(Type type)
-        {
-            var elementType = typeof(Element);
-
-            while (type.BaseType != elementType)
-            {
-                var baseType = type.BaseType;
-
-                if (baseType != null)
-                {
-                    type = baseType;
-                }
-                else
-                {
-                    return type == elementType ? true : false;
-                }
-
-            }
-
-            return type.BaseType == elementType ? true : false;
         }
 
         class DmxBinaryWriter : BinaryWriter
