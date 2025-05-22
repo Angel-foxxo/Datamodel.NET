@@ -29,7 +29,7 @@ namespace Datamodel
 
             readonly Datamodel DM;
 
-            public Element Root => DM.Root;
+            public Element? Root => DM.Root;
             public ElementList AllElements => DM.AllElements;
             public AttributeList PrefixAttributes => DM.PrefixAttributes;
         }
@@ -84,7 +84,7 @@ namespace Datamodel
         /// Returns the inner Type of an object which implements IList&lt;T&gt;, or null if there is no inner Type.
         /// </summary>
         /// <param name="t">The Type to check.</param>
-        public static Type GetArrayInnerType(Type t)
+        public static Type? GetArrayInnerType(Type t)
         {
             if (t == typeof(Element))
             {
@@ -121,7 +121,7 @@ namespace Datamodel
         /// <param name="type">The ICodec implementation being registered.</param>
         public static void RegisterCodec(Type type)
         {
-            if (type.GetInterface(typeof(ICodec).FullName) == null)
+            if (type.GetInterface(typeof(ICodec).FullName!) == null)
             {
                 throw new CodecException($"{type.Name} does not implement Datamodel.Codecs.ICodec.");
             }
@@ -159,13 +159,20 @@ namespace Datamodel
 
         private static ICodec GetCodec(string encoding, int encoding_version)
         {
-            Type codec_type;
+            Type? codec_type;
             if (!Codecs.TryGetValue(new CodecRegistration(encoding, encoding_version), out codec_type))
             {
                 throw new CodecException($"No codec found for {encoding} version {encoding_version}.");
             }
 
-            return (ICodec)codec_type.GetConstructor(Type.EmptyTypes).Invoke(null);
+            var codecConstructor = codec_type.GetConstructor(Type.EmptyTypes);
+
+            if(codecConstructor is null)
+            {
+                throw new InvalidOperationException("Failed to get codec constructor.");
+            }
+
+            return (ICodec)codecConstructor.Invoke(null);
         }
 
         /// <summary>
@@ -254,7 +261,7 @@ namespace Datamodel
         public static Datamodel Load(string path, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
         {
             var stream = File.OpenRead(path);
-            Datamodel dm = null;
+            Datamodel? dm = null;
             try
             {
                 dm = Load_Internal(stream, Assembly.GetCallingAssembly(), defer_mode, reflectionParams);
@@ -312,13 +319,19 @@ namespace Datamodel
             return dm;
         }
 
-        internal Element OnStubRequest(Guid id)
+        internal Element? OnStubRequest(Guid id)
         {
-            Element result = null;
+            Element? result = null;
             if (StubRequest != null)
             {
                 result = StubRequest(id);
-                if (result != null && result.ID != id)
+
+                if(result is null)
+                {
+                    throw new InvalidDataException("Stub request failed, result was null");
+                }
+
+                if (result.ID != id)
                     throw new InvalidOperationException("Datamodel.StubRequest returned an Element with a an ID different from the one requested.");
                 if (result.Owner != this)
                     result = ImportElement(result, ImportRecursionMode.Stubs, ImportOverwriteMode.Stubs);
@@ -330,7 +343,7 @@ namespace Datamodel
         /// <summary>
         /// Occurs when an attempt is made to access a stub elment.
         /// </summary>
-        public event StubRequestHandler StubRequest;
+        public event StubRequestHandler? StubRequest;
 
         #endregion
 
@@ -408,13 +421,18 @@ namespace Datamodel
             get => _Format;
             set
             {
-                if (value != null && value.Contains(' '))
+                if(value is null)
+                {
+                    throw new InvalidDataException("Format can not be null");
+                }
+
+                if (value.Contains(' '))
                     throw new ArgumentException("Format name cannot contain spaces.");
                 _Format = value;
                 OnPropertyChanged();
             }
         }
-        string _Format;
+        string _Format = "";
 
         /// <summary>
         /// Gets or sets the version of the <see cref="Format"/> in use.
@@ -438,13 +456,18 @@ namespace Datamodel
             get => _Encoding;
             set
             {
-                if (value != null && value.Contains(' '))
+                if(value is null)
+                {
+                    throw new InvalidDataException("Encoding can not be null");
+                }
+
+                if (value.Contains(' '))
                     throw new ArgumentException("Encoding name cannot contain spaces.");
                 _Encoding = value;
                 OnPropertyChanged();
             }
         }
-        string _Encoding;
+        string _Encoding = "";
 
         /// <summary>
         /// Gets or sets the version of the <see cref="Encoding"/> in use.
@@ -459,8 +482,8 @@ namespace Datamodel
         }
         int _EncodingVersion;
 
-        Stream Stream;
-        internal IDeferredAttributeCodec Codec;
+        Stream? Stream;
+        internal IDeferredAttributeCodec? Codec;
 
         /// <summary>
         /// Gets or sets the first Element of the Datamodel. Only Elements referenced by the Root element or one of its children are considered a part of the Datamodel.
@@ -515,7 +538,7 @@ namespace Datamodel
         /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Elements allowed in a Datamodel has been reached.</exception>
         /// <seealso cref="Element.Stub"/>
         /// <seealso cref="Element.ID"/>
-        public Element ImportElement(Element foreign_element, ImportRecursionMode import_mode, ImportOverwriteMode overwrite_mode)
+        public Element? ImportElement(Element foreign_element, ImportRecursionMode import_mode, ImportOverwriteMode overwrite_mode)
         {
             ArgumentNullException.ThrowIfNull(foreign_element);
 
@@ -587,7 +610,7 @@ namespace Datamodel
             }
         }
 
-        private object CopyValue(object value, ImportJob job)
+        private object? CopyValue(object value, ImportJob job)
         {
             if (value == null) return null;
             var attr_type = value.GetType();
@@ -601,7 +624,7 @@ namespace Datamodel
             {
                 var foreign_element = (Element)value;
                 var local_element = AllElements[foreign_element.ID];
-                Element best_element;
+                Element? best_element;
 
                 if (local_element != null && !local_element.Stub)
                     best_element = local_element;
@@ -612,7 +635,7 @@ namespace Datamodel
                     job.Depth--;
                 }
                 else
-                    best_element = local_element ?? (job.ImportMode == ImportRecursionMode.Stubs ? new Element(this, foreign_element.ID) : (Element)null);
+                    best_element = local_element ?? (job.ImportMode == ImportRecursionMode.Stubs ? new Element(this, foreign_element.ID) : null);
 
                 return best_element;
             }
@@ -627,12 +650,12 @@ namespace Datamodel
             else throw new ArgumentException("CopyValue: unhandled type.");
         }
 
-        private Element ImportElement_internal(Element foreign_element, ImportJob job)
+        private Element? ImportElement_internal(Element? foreign_element, ImportJob job)
         {
             if (foreign_element == null) return null;
             if (foreign_element.Owner == this) return foreign_element;
 
-            Element local_element;
+            Element? local_element;
 
             // don't import the same Element twice
             if (job.ImportMap.TryGetValue(foreign_element, out local_element))
@@ -656,7 +679,13 @@ namespace Datamodel
                             {
                                 var item = elem_array[i];
                                 if (item != null && item.Owner != null)
-                                    elem_array[i] = ImportElement_internal(item, job);
+                                {
+                                    var importedElement = ImportElement_internal(item, job);
+                                    if (importedElement is not null)
+                                    {
+                                        elem_array[i] = importedElement;
+                                    }
+                                }
                             }
                         }
                     }
@@ -686,6 +715,12 @@ namespace Datamodel
                     else
                         local_element = null;
                 }
+
+                if(local_element is null)
+                {
+                    return null;
+                }
+
                 job.ImportMap.Add(foreign_element, local_element);
 
                 // Copy attributes
@@ -701,6 +736,11 @@ namespace Datamodel
                             var list = (System.Collections.ICollection)attr.Value;
                             var inner_type = GetArrayInnerType(list.GetType());
 
+                            if(inner_type is null)
+                            {
+                                throw new InvalidOperationException("Failed to get inner_type while importing element");
+                            }
+
                             var copied_array = CodecUtilities.MakeList(inner_type, list.Count);
                             foreach (var item in list)
                                 copied_array.Add(CopyValue(item, job));
@@ -715,75 +755,13 @@ namespace Datamodel
             }
         }
 
-        #region Deprecated methods
-
-        /// <summary>
-        /// Creates a new stub Element.
-        /// </summary>
-        /// <seealso cref="Element.Stub"/>
-        /// <param name="id">The ID of the stub. Must be unique within the Datamodel.</param>
-        /// <returns>A new stub Element owned by this Datamodel.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Elements allowed in a Datamodel has been reached.</exception>
-        [Obsolete("Elements should now be constructed directly.")]
-        public Element CreateStubElement(Guid id)
-        {
-            return CreateElement(null, id, true);
-        }
-
-        /// <summary>
-        /// Creates a new Element with a random ID.
-        /// </summary>
-        /// <param name="name">The Element's name. Duplicates allowed.</param>
-        /// <param name="class_name">The Element's class.</param>
-        /// <returns>A new Element owned by this Datamodel.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when Datamodel.AllowRandomIDs is false.</exception>
-        /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Elements allowed in a Datamodel has been reached.</exception>
-        [Obsolete("Elements should now be constructed directly.")]
-        public Element CreateElement(string name, string class_name = "DmElement")
-        {
-            if (!AllowRandomIDs)
-                throw new InvalidOperationException("Random IDs are not allowed in this Datamodel.");
-
-            Guid id;
-
-            do
-            {
-                id = Guid.NewGuid();
-            }
-            while (AllElements[id] != null);
-
-            return CreateElement(name, id, class_name);
-        }
-
-        /// <summary>
-        /// Creates a new Element.
-        /// </summary>
-        /// <param name="name">The Element's name. Duplicates allowed.</param>
-        /// <param name="id">The Element's ID. Must be unique within the Datamodel.</param>
-        /// <param name="class_name">The Element's class.</param>
-        /// <returns>A new Element owned by this Datamodel.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Elements allowed in a Datamodel has been reached.</exception>
-        [Obsolete("Elements should now be constructed directly.")]
-        public Element CreateElement(string name, Guid id, string class_name = "DmElement")
-        {
-            return CreateElement(name, id, false, class_name);
-        }
-
-        [Obsolete("Elements should now be constructed directly.")]
-        internal Element CreateElement(string name, Guid id, bool stub, string classname = "DmElement")
-        {
-            return stub ? new Element(this, id) : new Element(this, name, id, classname);
-        }
-
-        #endregion
-
         #endregion
 
         #region Events
         /// <summary>
         /// Raised when the Datamodel's <see cref="Format"/>, <see cref="FormatVersion"/>, or <see cref="Root"/> changes.
         /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName()] string property = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
@@ -886,14 +864,22 @@ namespace Datamodel
         internal DestubException(Attribute attr, Exception innerException)
             : base("An exception occured while destubbing the value of an attribute.", innerException)
         {
-            Data.Add("Element", ((Element)attr.Owner).ID);
+            Data.Add("Element", ((Element?)attr.Owner)?.ID);
             Data.Add("Attribute", attr.Name);
         }
 
         internal DestubException(ElementArray array, int index, Exception innerException)
             : base("An exception occured while destubbing an array item.", innerException)
         {
-            Data.Add("Element", ((Element)array.Owner).ID);
+            var arrayOwner = array.Owner;
+            if(arrayOwner is not null)
+            {
+                Data.Add("Element", ((Element)arrayOwner).ID);
+            }
+            else
+            {
+                Data.Add("Element", null);
+            }
             Data.Add("Index", index);
         }
 

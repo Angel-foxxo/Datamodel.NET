@@ -7,7 +7,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
 
-using AttrKVP = System.Collections.Generic.KeyValuePair<string, object>;
+using AttrKVP = System.Collections.Generic.KeyValuePair<string, object?>;
 using System.Reflection;
 using System.IO;
 
@@ -18,7 +18,7 @@ namespace Datamodel
     /// </summary>
     [DebuggerTypeProxy(typeof(DebugView))]
     [DebuggerDisplay("Count = {Count}")]
-    public class AttributeList : IDictionary<string, object>, IDictionary
+    public class AttributeList : IDictionary<string, object?>, IDictionary
     {
         internal OrderedDictionary PropertyInfos;
         internal OrderedDictionary Inner;
@@ -29,6 +29,11 @@ namespace Datamodel
             var result = new List<Attribute>();
             foreach (DictionaryEntry entry in PropertyInfos)
             {
+                if(entry.Value is null)
+                {
+                    throw new InvalidDataException("Property value can not be null");
+                }
+
                 var prop = (PropertyInfo)entry.Value;
                 var name = useSerializationName ? (string)entry.Key : prop.Name;
                 var attr = new Attribute(name, this, prop.GetValue(this));
@@ -64,7 +69,7 @@ namespace Datamodel
                 readonly Attribute Attr;
 
                 [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-                object Value { get { return Attr.Value; } }
+                object? Value { get { return Attr.Value; } }
             }
         }
 
@@ -109,7 +114,7 @@ namespace Datamodel
         /// </summary>
         /// <param name="key">The name of the attribute. Must be unique to this AttributeList.</param>
         /// <param name="value">The value of the Attribute. Must be of a valid Datamodel type.</param>
-        public void Add(string key, object value)
+        public void Add(string key, object? value)
         {
             this[key] = value;
         }
@@ -128,7 +133,14 @@ namespace Datamodel
         /// <exception cref="KeyNotFoundException">Thrown when the given attribute is not present in the list.</exception>
         public OverrideType? GetOverrideType(string key)
         {
-            return ((Attribute)Inner[key]).OverrideType;
+            var attrib = Inner[key];
+
+            if(attrib is null)
+            {
+                return null;
+            }
+
+            return ((Attribute)attrib).OverrideType;
         }
 
         /// <summary>
@@ -139,7 +151,13 @@ namespace Datamodel
         /// <exception cref="AttributeTypeException">Thrown when the attribute's CLR type does not map to the value given in <paramref name="type"/>.</exception>
         public void SetOverrideType(string key, OverrideType? type)
         {
-            ((Attribute)Inner[key]).OverrideType = type;
+            var attrib = Inner[key];
+
+            if (attrib is not null)
+            {
+                ((Attribute)attrib).OverrideType = type;
+            }
+
         }
 
         /// <summary>
@@ -162,7 +180,7 @@ namespace Datamodel
         {
             lock (Attribute_ChangeLock)
             {
-                var attr = (Attribute)Inner[key];
+                var attr = (Attribute?)Inner[key];
                 if (attr == null) return false;
 
                 var index = IndexOf(key);
@@ -172,11 +190,11 @@ namespace Datamodel
             }
         }
 
-        public bool TryGetValue(string key, out object value)
+        public bool TryGetValue(string key, out object? value)
         {
-            Attribute result;
+            Attribute? result;
             lock (Attribute_ChangeLock)
-                result = (Attribute)Inner[key];
+                result = (Attribute?)Inner[key];
 
             if (result != null)
             {
@@ -200,7 +218,7 @@ namespace Datamodel
         {
             get { lock (Attribute_ChangeLock) return Inner.Keys.Cast<string>().ToArray(); }
         }
-        public ICollection<object> Values
+        public ICollection<object?> Values
         {
             get { lock (Attribute_ChangeLock) return Inner.Values.Cast<Attribute>().Select(attr => attr.Value).ToArray(); }
         }
@@ -223,7 +241,7 @@ namespace Datamodel
                 var attr = (Attribute?)Inner[name];
                 if (attr == null)
                 {
-                    var prop_attr = (PropertyInfo)PropertyInfos[name];
+                    var prop_attr = (PropertyInfo?)PropertyInfos[name];
                     if (prop_attr != null)
                     {
                         return prop_attr.GetValue(this);
@@ -238,16 +256,16 @@ namespace Datamodel
             {
                 ArgumentNullException.ThrowIfNull(name);
                 if (value != null && !Datamodel.IsDatamodelType(value.GetType()))
-                    throw new AttributeTypeException(String.Format("{0} is not a valid Datamodel attribute type. (If this is an array, it must implement IList<T>).", value.GetType().FullName));
+                    throw new AttributeTypeException($"{value.GetType().FullName} is not a valid Datamodel attribute type. (If this is an array, it must implement IList<T>).");
 
-                if (Owner != null && this == Owner.PrefixAttributes && value.GetType() == typeof(Element))
+                if (Owner != null && this == Owner.PrefixAttributes && value?.GetType() == typeof(Element))
                     throw new AttributeTypeException("Elements are not supported as prefix attributes.");
 
-                var prop_attr = (PropertyInfo)PropertyInfos[name];
+                var prop_attr = (PropertyInfo?)PropertyInfos[name];
 
                 if (prop_attr != null)
                 {
-                    PropertyInfo prop = GetType().GetProperty(prop_attr.Name, BindingFlags.Public | BindingFlags.Instance);
+                    PropertyInfo? prop = GetType().GetProperty(prop_attr.Name, BindingFlags.Public | BindingFlags.Instance);
 
                     if (prop != null && prop.CanWrite)
                     {
@@ -272,12 +290,12 @@ namespace Datamodel
                     return;
                 }
                 
-                Attribute old_attr;
-                Attribute new_attr;
+                Attribute? old_attr;
+                Attribute? new_attr;
                 int old_index = -1;
                 lock (Attribute_ChangeLock)
                 {
-                    old_attr = (Attribute)Inner[name];
+                    old_attr = (Attribute?)Inner[name];
                     new_attr = new Attribute(name, this, value);
 
                     if (old_attr != null)
@@ -305,7 +323,13 @@ namespace Datamodel
         {
             get
             {
-                var attr = (Attribute)Inner[index];
+                var attr = (Attribute?)Inner[index];
+
+                if(attr is null)
+                {
+                    throw new InvalidOperationException($"attribute at index {index} doesn't exist");
+                }
+
                 return attr.ToKeyValuePair();
             }
             set
@@ -320,12 +344,16 @@ namespace Datamodel
         /// </summary>
         public void RemoveAt(int index)
         {
-            Attribute attr;
+            Attribute? attr;
             lock (Attribute_ChangeLock)
             {
-                attr = (Attribute)Inner[index];
-                attr.Owner = null;
-                Inner.RemoveAt(index);
+                attr = (Attribute?)Inner[index];
+
+                if(attr is not null)
+                {
+                    attr.Owner = null;
+                    Inner.RemoveAt(index);
+                }
             }
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, attr, index));
         }
@@ -398,7 +426,7 @@ namespace Datamodel
         /// Raised when <see cref="Element.Name"/>, <see cref="Element.ClassName"/>, <see cref="Element.ID"/> or
         /// a custom Element property has changed.
         /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName()] string property = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
@@ -407,7 +435,7 @@ namespace Datamodel
         /// <summary>
         /// Raised when an <see cref="Attribute"/> is added, removed, or replaced.
         /// </summary>
-        public event NotifyCollectionChangedEventHandler CollectionChanged;
+        public event NotifyCollectionChangedEventHandler? CollectionChanged;
         protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             Debug.Assert(!(e.NewItems != null && e.NewItems.OfType<Attribute>().Any()) && !(e.OldItems != null && e.OldItems.OfType<Attribute>().Any()));
@@ -437,12 +465,12 @@ namespace Datamodel
             Remove((string)key);
         }
 
-        void IDictionary.Add(object key, object value)
+        void IDictionary.Add(object key, object? value)
         {
             Add((string)key, value);
         }
 
-        object IDictionary.this[object key]
+        object? IDictionary.this[object key]
         {
             get
             {
@@ -466,7 +494,7 @@ namespace Datamodel
         {
             lock (Attribute_ChangeLock)
             {
-                var attr = (Attribute)Inner[item.Key];
+                var attr = (Attribute?)Inner[item.Key];
                 if (attr == null || attr.Value != item.Value) return false;
                 Remove(attr.Name);
                 return true;
@@ -497,7 +525,7 @@ namespace Datamodel
         {
             lock (Attribute_ChangeLock)
             {
-                var attr = (Attribute)Inner[item.Key];
+                var attr = (Attribute?)Inner[item.Key];
                 return attr != null && attr.Value == item.Value;
             }
         }
@@ -521,12 +549,17 @@ namespace Datamodel
                 return _Default;
             }
         }
-        static ValueComparer _Default;
+        static ValueComparer? _Default;
 
-        public new bool Equals(object x, object y)
+        public new bool Equals(object? x, object? y)
         {
-            var type_x = x?.GetType();
-            var type_y = y?.GetType();
+            if(x is null || y is null)
+            {
+                return false;
+            }
+
+            var type_x = x.GetType();
+            var type_y = y.GetType();
 
             if (type_x == null && type_y == null)
                 return true;

@@ -184,7 +184,12 @@ namespace Datamodel
                         if (elem == null) continue;
                         if (elem.Owner == null)
                         {
-                            Inner[i] = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
+                            var importedElement = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
+                            
+                            if(importedElement is not null)
+                            {
+                                Inner[i] = importedElement;
+                            }
                         }
                         else if (elem.Owner != OwnerDatamodel)
                             throw new ElementOwnershipException();
@@ -198,9 +203,18 @@ namespace Datamodel
             if (item != null && OwnerDatamodel != null)
             {
                 if (item.Owner == null)
-                    item = OwnerDatamodel.ImportElement(item, Datamodel.ImportRecursionMode.Recursive, Datamodel.ImportOverwriteMode.Stubs);
+                {
+                    var importedElement = OwnerDatamodel.ImportElement(item, Datamodel.ImportRecursionMode.Recursive, Datamodel.ImportOverwriteMode.Stubs);
+                
+                    if(importedElement is not null)
+                    {
+                        item = importedElement;
+                    }
+                }
                 else if (item.Owner != OwnerDatamodel)
+                {
                     throw new ElementOwnershipException();
+                }
             }
 
             base.Insert_Internal(index, item!);
@@ -215,7 +229,7 @@ namespace Datamodel
                 {
                     try
                     {
-                        elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID);
+                        elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID)!;
                     }
                     catch (Exception err)
                     {

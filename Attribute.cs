@@ -84,7 +84,7 @@ namespace Datamodel
         /// <summary>
         /// Gets the <see cref="AttributeList"/> which this Attribute is a member of.
         /// </summary>
-        public AttributeList Owner
+        public AttributeList? Owner
         {
             get { return _Owner; }
             internal set
@@ -95,9 +95,9 @@ namespace Datamodel
                 _Owner = value;
             }
         }
-        AttributeList _Owner;
+        AttributeList? _Owner;
 
-        Datamodel? OwnerDatamodel { get { return Owner.Owner; } }
+        Datamodel? OwnerDatamodel { get { return Owner?.Owner; } }
 
         /// <summary>
         /// Gets whether the value of this Attribute has yet to be decoded.
@@ -125,7 +125,7 @@ namespace Datamodel
             }
             catch (Exception err)
             {
-                throw new CodecException($"Deferred loading of attribute \"{Name}\" on element {((Element)Owner).ID} using {OwnerDatamodel.Codec} codec threw an exception.", err);
+                throw new CodecException($"Deferred loading of attribute \"{Name}\" on element {((Element?)Owner)?.ID} using {OwnerDatamodel.Codec} codec threw an exception.", err);
             }
             Offset = 0;
 
