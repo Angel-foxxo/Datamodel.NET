@@ -24,7 +24,7 @@ namespace Datamodel
 
         protected List<T> Inner;
 
-        public virtual AttributeList Owner
+        public virtual AttributeList? Owner
         {
             get => _Owner;
             internal set
@@ -32,9 +32,9 @@ namespace Datamodel
                 _Owner = value;
             }
         }
-        AttributeList _Owner;
+        AttributeList? _Owner;
 
-        protected Datamodel OwnerDatamodel => Owner?.Owner;
+        protected Datamodel? OwnerDatamodel => Owner?.Owner;
 
         internal Array()
         {
@@ -94,7 +94,7 @@ namespace Datamodel
 
         public object SyncRoot => throw new NotImplementedException();
 
-        object IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        object? IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public bool Remove(T item) => Inner.Remove(item);
 
@@ -102,32 +102,44 @@ namespace Datamodel
         IEnumerator IEnumerable.GetEnumerator() => Inner.GetEnumerator();
 
         #region IList
-        int IList.Add(object value)
+        int IList.Add(object? value)
         {
-            Add((T)value);
+            if (value is not null)
+                Add((T)value);
             return Count;
         }
 
-        bool IList.Contains(object value)
+        bool IList.Contains(object? value)
         {
+            if (value is null)
+                return false;
             return Contains((T)value);
         }
 
-        int IList.IndexOf(object value)
+        int IList.IndexOf(object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to get the index of a null object");
+
             return IndexOf((T)value);
         }
 
-        void IList.Insert(int index, object value)
+        void IList.Insert(int index, object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to insert a null object");
+
             Insert(index, (T)value);
         }
 
         bool IList.IsFixedSize { get { return false; } }
         bool IList.IsReadOnly { get { return false; } }
 
-        void IList.Remove(object value)
+        void IList.Remove(object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to remove a null object");
+
             Remove((T)value);
         }
 
@@ -156,7 +168,7 @@ namespace Datamodel
         /// </summary>
         internal IEnumerable<Element> RawList { get { foreach (var elem in Inner) yield return elem; } }
 
-        public override AttributeList Owner
+        public override AttributeList? Owner
         {
             get => base.Owner;
             internal set
@@ -191,7 +203,7 @@ namespace Datamodel
                     throw new ElementOwnershipException();
             }
 
-            base.Insert_Internal(index, item);
+            base.Insert_Internal(index, item!);
         }
 
         public override Element this[int index]
@@ -210,6 +222,12 @@ namespace Datamodel
                         throw new DestubException(this, index, err);
                     }
                 }
+
+                if (elem is null)
+                {
+                    throw new InvalidOperationException("Element at specified index is null");
+                }
+
                 return elem;
             }
             set => base[index] = value;

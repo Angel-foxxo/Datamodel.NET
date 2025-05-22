@@ -83,7 +83,7 @@ namespace Datamodel
             Binary,
         }
 
-        public AttributeList(Datamodel owner)
+        public AttributeList(Datamodel? owner)
         {
             var propertyAttributes = GetPropertyDerivedAttributeList();
             PropertyInfos = new OrderedDictionary(propertyAttributes?.Count ?? 0);
@@ -102,7 +102,7 @@ namespace Datamodel
         /// <summary>
         /// Gets the <see cref="Datamodel"/> that this AttributeList is owned by.
         /// </summary>
-        public virtual Datamodel Owner { get; internal set; }
+        public virtual Datamodel? Owner { get; internal set; }
 
         /// <summary>
         /// Adds a new attribute to this AttributeList.
@@ -115,7 +115,7 @@ namespace Datamodel
         }
 
 
-        protected virtual ICollection<(string Name, PropertyInfo Property)> GetPropertyDerivedAttributeList()
+        protected virtual ICollection<(string Name, PropertyInfo Property)>? GetPropertyDerivedAttributeList()
         {
             return null;
         }

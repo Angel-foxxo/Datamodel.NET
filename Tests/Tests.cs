@@ -325,14 +325,14 @@ namespace Datamodel_Tests
         [Test]
         public void LoadVmap_Reflection_Binary()
         {
-            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "de_inferno_d.vmap"));
+            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
             Test_Vmap_Reflection(unserialisedVmap);
         }
 
         [Test]
         public void LoadVmap_Reflection_Text()
         {
-            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "de_mirage_d.vmap.txt"));
+            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
             Test_Vmap_Reflection(unserialisedVmap);
         }
 

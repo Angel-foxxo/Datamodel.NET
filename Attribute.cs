@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-using AttrKVP = System.Collections.Generic.KeyValuePair<string, object>;
+using AttrKVP = System.Collections.Generic.KeyValuePair<string, object?>;
 
 namespace Datamodel
 {
@@ -16,7 +16,7 @@ namespace Datamodel
         /// </summary>
         /// <param name="name">The name of the Attribute, which must be unique to its owner.</param>
         /// <param name="value">The value of the Attribute, which must be of a supported Datamodel type.</param>
-        public Attribute(string name, AttributeList owner, object value)
+        public Attribute(string name, AttributeList owner, object? value)
         {
             ArgumentNullException.ThrowIfNull(name);
 
@@ -48,7 +48,7 @@ namespace Datamodel
         /// <summary>
         /// Gets the Type of this Attribute's Value.
         /// </summary>
-        public Type ValueType { get; private set; }
+        public Type ValueType { get; private set; } = typeof(Element);
 
         /// <summary>
         /// Gets or sets the OverrideType of this Attributes.
@@ -97,7 +97,7 @@ namespace Datamodel
         }
         AttributeList _Owner;
 
-        Datamodel OwnerDatamodel { get { return Owner?.Owner; } }
+        Datamodel? OwnerDatamodel { get { return Owner.Owner; } }
 
         /// <summary>
         /// Gets whether the value of this Attribute has yet to be decoded.
@@ -138,7 +138,7 @@ namespace Datamodel
         /// </summary>
         /// <exception cref="CodecException">Thrown when deferred value loading fails.</exception>
         /// <exception cref="DestubException">Thrown when Element destubbing fails.</exception>
-        public object Value
+        public object? Value
         {
             get
             {
@@ -197,12 +197,12 @@ namespace Datamodel
                 Offset = 0;
             }
         }
-        object _Value;
+        object? _Value = null;
 
         /// <summary>
         /// Gets the Attribute's Value without attempting deferred loading or destubbing.
         /// </summary>
-        public object RawValue { get { return _Value; } }
+        public object? RawValue { get { return _Value; } }
 
         #endregion
 

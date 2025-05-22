@@ -267,7 +267,7 @@ namespace Datamodel.Codecs
             return output;
         }
 
-        object ReadValue(Datamodel dm, Type type, bool raw_string)
+        object? ReadValue(Datamodel dm, Type type, bool raw_string)
         {
             if (type == typeof(Element))
             {
@@ -450,13 +450,13 @@ namespace Datamodel.Codecs
 
         int EncodingVersion;
 
-        public object DeferredDecodeAttribute(Datamodel dm, long offset)
+        public object? DeferredDecodeAttribute(Datamodel dm, long offset)
         {
             Reader.BaseStream.Seek(offset, SeekOrigin.Begin);
             return DecodeAttribute(dm, false);
         }
 
-        object DecodeAttribute(Datamodel dm, bool prefix)
+        object? DecodeAttribute(Datamodel dm, bool prefix)
         {
             var types = IdToType(Reader.ReadByte());
 
