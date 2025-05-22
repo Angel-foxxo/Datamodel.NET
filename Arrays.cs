@@ -10,16 +10,12 @@ namespace Datamodel
     [DebuggerDisplay("Count = {Inner.Count}")]
     public abstract class Array<T> : IList<T>, IList
     {
-        internal class DebugView
+        internal class DebugView(Array<T> arr)
         {
-            public DebugView(Array<T> arr)
-            {
-                Arr = arr;
-            }
-            Array<T> Arr;
+            readonly Array<T> Arr = arr;
 
             [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-            public T[] Items { get { return Arr.Inner.ToArray(); } }
+            public T[] Items { get { return [.. Arr.Inner]; } }
         }
 
         protected List<T> Inner;
@@ -38,15 +34,15 @@ namespace Datamodel
 
         internal Array()
         {
-            Inner = new List<T>();
+            Inner = [];
         }
 
         internal Array(IEnumerable<T> enumerable)
         {
             if (enumerable != null)
-                Inner = new List<T>(enumerable);
+                Inner = [.. enumerable];
             else
-                Inner = new List<T>();
+                Inner = [];
         }
 
         internal Array(int capacity)

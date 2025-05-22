@@ -13,5 +13,5 @@ public record struct Color(byte R, byte G, byte B, byte A)
     }
 
     public byte[] ToBytes()
-        => new byte[] { R, G, B, A };
+        => [R, G, B, A];
 }

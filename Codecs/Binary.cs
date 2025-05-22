@@ -18,7 +18,7 @@ namespace Datamodel.Codecs
     [CodecFormat("binary", 9)]
     class Binary : ICodec
     {
-        static readonly Dictionary<int, Type?[]> SupportedAttributes = new();
+        static readonly Dictionary<int, Type?[]> SupportedAttributes = [];
 
         /// <summary>
         /// The number of Datamodel binary ticks in one second. Used to store TimeSpan values.
@@ -28,21 +28,21 @@ namespace Datamodel.Codecs
         static Binary()
         {
             SupportedAttributes[1] =
-            SupportedAttributes[2] = new Type?[] {
+            SupportedAttributes[2] = [
                 typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
                 null /* ObjectID */, typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4)
-            };
+            ];
             SupportedAttributes[3] =
             SupportedAttributes[4] =
-            SupportedAttributes[5] = new Type[] {
+            SupportedAttributes[5] = [
                 typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
                 typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(Vector3) /* angle*/, typeof(Quaternion), typeof(Matrix4x4)
-            };
-            SupportedAttributes[9] = new Type[] {
+            ];
+            SupportedAttributes[9] = [
                 typeof(Element), typeof(int), typeof(float), typeof(bool), typeof(string), typeof(byte[]),
                 typeof(TimeSpan), typeof(Color), typeof(Vector2), typeof(Vector3), typeof(Vector4), typeof(QAngle), typeof(Quaternion), typeof(Matrix4x4),
                 typeof(ulong), typeof(byte)
-            };
+            ];
         }
 
         static byte TypeToId(Type type, int version)
@@ -105,7 +105,7 @@ namespace Datamodel.Codecs
 
         protected string ReadString_Raw(BinaryReader reader)
         {
-            List<byte> raw = new();
+            List<byte> raw = [];
             while (true)
             {
                 byte cur = reader.ReadByte();
@@ -124,7 +124,7 @@ namespace Datamodel.Codecs
             readonly Binary? Codec;
             readonly int EncodingVersion;
 
-            readonly List<string> Strings = new();
+            readonly List<string> Strings = [];
             public bool Dummy;
 
             // binary 4 uses int for dictionary length, but short for dictionary indices. Whoops!
@@ -156,14 +156,14 @@ namespace Datamodel.Codecs
                 Dummy = EncodingVersion == 1;
                 if (!Dummy)
                 {
-                    Scraped = new HashSet<Element>();
+                    Scraped = [];
 
                     ScrapeElement(dm.Root);
                     Strings = Strings.Distinct().ToList();
                 }
             }
 
-            private readonly HashSet<Element> Scraped = new();
+            private readonly HashSet<Element> Scraped = [];
 
             void ScrapeElement(Element? elem)
             {
@@ -389,7 +389,7 @@ namespace Datamodel.Codecs
                         ConstructorInfo? constructor = typeof(Element).GetConstructor(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                             null,
-                            new Type[] { typeof(Datamodel), typeof(string), typeof(Guid), typeof(string) },
+                            [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
                             null
                         );
                 
@@ -399,7 +399,7 @@ namespace Datamodel.Codecs
                         }
                 
                         object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
-                        constructor.Invoke(uninitializedObject, new object[] { dm, name, id, type });
+                        constructor.Invoke(uninitializedObject, [dm, name, id, type]);
                 
                         elem = (Element?)uninitializedObject;
                     }
@@ -548,8 +548,8 @@ namespace Datamodel.Codecs
                 Datamodel = dm;
 
                 StringDict = new StringDictionary(version, writer, dm);
-                ElementIndices = new Dictionary<Element, int>();
-                ElementOrder = new List<Element>();
+                ElementIndices = [];
+                ElementOrder = [];
 
             }
 

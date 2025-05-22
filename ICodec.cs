@@ -38,21 +38,14 @@ namespace Datamodel.Codecs
     /// Parameters for reflection based deserialisation
     /// By default it will look for types in the calling assembly (the one which made this class)
     /// </summary>
-    public class ReflectionParams
+    /// <param name="attemptReflection">If to use reflection or not.</param>
+    /// <param name="additionalTypes">Additional types to consider when matching.</param>
+    /// <param name="assembliesToSearch">Additional assemblies to look for types in.</param>
+    public class ReflectionParams(bool attemptReflection = true, List<Type>? additionalTypes = null, List<Assembly>? assembliesToSearch = null)
     {
-        public bool AttemptReflection;
-        public List<Type> AdditionalTypes;
-        public List<Assembly> AssembliesToSearch;
-
-        /// <param name="attemptReflection">If to use reflection or not.</param>
-        /// <param name="additionalTypes">Additional types to consider when matching.</param>
-        /// <param name="assembliesToSearch">Additional assemblies to look for types in.</param>
-        public ReflectionParams(bool attemptReflection = true, List<Type>? additionalTypes = null, List<Assembly>? assembliesToSearch = null)
-        {
-            AttemptReflection = attemptReflection;
-            AdditionalTypes = additionalTypes ??= new();
-            AssembliesToSearch = assembliesToSearch ??= new();
-        }
+        public bool AttemptReflection = attemptReflection;
+        public List<Type> AdditionalTypes = additionalTypes ??= [];
+        public List<Assembly> AssembliesToSearch = assembliesToSearch ??= [];
     }
 
 
@@ -197,7 +190,7 @@ namespace Datamodel.Codecs
 
         public static Dictionary<string, Type> GetReflectionTypes(ReflectionParams reflectionParams)
         {
-            Dictionary<string, Type> types = new();
+            Dictionary<string, Type> types = [];
 
             if (reflectionParams.AttemptReflection)
             {
@@ -242,7 +235,7 @@ namespace Datamodel.Codecs
         public CodecFormatAttribute(string name, int version)
         {
             Name = name;
-            Versions = new int[] { version };
+            Versions = [version];
         }
 
         public string Name { get; private set; }

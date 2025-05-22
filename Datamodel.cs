@@ -36,7 +36,7 @@ namespace Datamodel
 
         #region Attribute types
 
-        private static readonly Type[] attributeTypes = {
+        private static readonly Type[] attributeTypes = [
             typeof(Element),
             typeof(int),
             typeof(float),
@@ -53,7 +53,7 @@ namespace Datamodel
             typeof(byte),
             typeof(ulong),
             typeof(QAngle),
-        };
+        ];
 
         public static Type[] AttributeTypes => attributeTypes;
 
@@ -110,7 +110,7 @@ namespace Datamodel
         }
 
         #region Codecs
-        public static readonly Dictionary<CodecRegistration, Type> Codecs = new();
+        public static readonly Dictionary<CodecRegistration, Type> Codecs = [];
 
         public static IEnumerable<CodecRegistration> CodecsRegistered => Codecs.Keys.OrderBy(reg => string.Join(null, reg.Item1, reg.Item2)).ToArray();
 
@@ -606,7 +606,7 @@ namespace Datamodel
             {
                 ImportMode = import_mode;
                 OverwriteMode = overwrite_mode;
-                ImportMap = new Dictionary<Element, Element>();
+                ImportMap = [];
             }
         }
 

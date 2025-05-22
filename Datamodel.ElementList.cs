@@ -32,7 +32,7 @@ namespace Datamodel
                 public Element[] Elements => Item.store.Values.Cast<Element>().ToArray();
             }
 
-            private readonly OrderedDictionary store = new();
+            private readonly OrderedDictionary store = [];
             private readonly Datamodel Owner;
 
             internal ElementList(Datamodel owner)

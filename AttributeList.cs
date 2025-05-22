@@ -100,7 +100,7 @@ namespace Datamodel
                 }
             }
 
-            Inner = new OrderedDictionary();
+            Inner = [];
             Owner = owner;
         }
 

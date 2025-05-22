@@ -22,8 +22,8 @@ namespace Datamodel.Codecs
     [CodecFormat("keyvalues2_noids", 4)]
     class KeyValues2 : ICodec
     {
-        static readonly Dictionary<Type, string> TypeNames = new();
-        static readonly Dictionary<int, Type[]> ValidAttributes = new();
+        static readonly Dictionary<Type, string> TypeNames = [];
+        static readonly Dictionary<int, Type[]> ValidAttributes = [];
         static KeyValues2()
         {
             TypeNames[typeof(Element)] = "element";
@@ -131,7 +131,7 @@ namespace Datamodel.Codecs
 
         // Multi-referenced elements are written out as a separate block at the end of the file.
         // In-line only the id is written.
-        Dictionary<Element, int> ReferenceCount = new();
+        Dictionary<Element, int> ReferenceCount = [];
 
         bool SupportsReferenceIds;
 
@@ -294,9 +294,8 @@ namespace Datamodel.Codecs
 
                     value = FormattableString.Invariant(FormattableStringFactory.Create(matrixString));
                 }
-                else if (value is QAngle qangle_value)
+                else if (value is QAngle castValue)
                 {
-                    var castValue = (QAngle)value;
                     value = FormattableString.Invariant($"{castValue.Pitch} {castValue.Yaw} {castValue.Roll}");
                 }
 
@@ -354,7 +353,7 @@ namespace Datamodel.Codecs
             writer.Write(String.Format(CodecUtilities.HeaderPattern, encoding, encodingVersion, dm.Format, dm.FormatVersion));
             writer.WriteLine();
 
-            ReferenceCount = new Dictionary<Element, int>();
+            ReferenceCount = [];
 
             if (encodingVersion >= 4 && dm.PrefixAttributes.Count > 0)
             {
@@ -404,8 +403,8 @@ namespace Datamodel.Codecs
             // these store element refs while we process the elements, once were done
             // we can go trough these and actually create the attributes
             // and add the elements to lists
-            public Dictionary<Element, List<(string, Guid)>> PropertiesToAdd = new();
-            public Dictionary<IList, List<Guid>> ListRefs = new();
+            public Dictionary<Element, List<(string, Guid)>> PropertiesToAdd = [];
+            public Dictionary<IList, List<Guid>> ListRefs = [];
 
             public void HandleElementProp(Element? element, string attrName, Guid id)
             {
@@ -418,7 +417,7 @@ namespace Datamodel.Codecs
 
                 if (attrList == null)
                 {
-                    attrList = new List<(string, Guid)>();
+                    attrList = [];
                     PropertiesToAdd.Add(element, attrList);
                 }
 
@@ -432,7 +431,7 @@ namespace Datamodel.Codecs
 
                 if (guidList == null)
                 {
-                    guidList = new List<Guid>();
+                    guidList = [];
                     ListRefs.Add(list, guidList);
                 }
 
@@ -522,7 +521,7 @@ namespace Datamodel.Codecs
                                 ConstructorInfo? constructor = typeof(Element).GetConstructor(
                                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                                     null,
-                                    new Type[] { typeof(Datamodel), typeof(string), typeof(Guid), typeof(string) },
+                                    [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
                                     null
                                 );
 
@@ -532,16 +531,13 @@ namespace Datamodel.Codecs
                                 }
 
                                 object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
-                                constructor.Invoke(uninitializedObject, new object[] { dataModel, elem_name, new Guid(elem_id), elem_class });
+                                constructor.Invoke(uninitializedObject, [dataModel, elem_name, new Guid(elem_id), elem_class]);
 
                                 elem = (Element?)uninitializedObject;
                             }
                         }
 
-                        if (elem == null)
-                        {
-                            elem = new Element(dataModel, elem_name, new Guid(elem_id), elem_class);
-                        }
+                        elem ??= new Element(dataModel, elem_name, new Guid(elem_id), elem_class);
                     }
 
                     continue;
@@ -664,7 +660,7 @@ namespace Datamodel.Codecs
             else if (type == typeof(TimeSpan))
                 return TimeSpan.FromTicks((long)(double.Parse(value, CultureInfo.InvariantCulture) * TimeSpan.TicksPerSecond));
 
-            var num_list = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            var num_list = value.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries);
 
             if (type == typeof(Color))
             {

@@ -403,11 +403,11 @@ namespace Datamodel
                 }
                 else
                 {
-                    return type == elementType ? true : false;
+                    return type == elementType;
                 }
             }
 
-            return type.BaseType == elementType ? true : false;
+            return type.BaseType == elementType;
         }
     }
 
