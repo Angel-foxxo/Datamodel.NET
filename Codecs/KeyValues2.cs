@@ -664,7 +664,7 @@ namespace Datamodel.Codecs
             else if (type == typeof(TimeSpan))
                 return TimeSpan.FromTicks((long)(double.Parse(value, CultureInfo.InvariantCulture) * TimeSpan.TicksPerSecond));
 
-            var num_list = value.Split();
+            var num_list = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
             if (type == typeof(Color))
             {
