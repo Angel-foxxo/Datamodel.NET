@@ -65,7 +65,7 @@ namespace Datamodel.Codecs
         /// <param name="dm">The <see cref="Datamodel"/> to which the Attribute belongs.</param>
         /// <param name="offset">The offset at which the Attribute begins in the source <see cref="Stream"/>.</param>
         /// <returns>The Attribute's value.</returns>
-        object DeferredDecodeAttribute(Datamodel dm, long offset);
+        object? DeferredDecodeAttribute(Datamodel dm, long offset);
     }
 
     /// <summary>

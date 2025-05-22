@@ -16,9 +16,10 @@ namespace Datamodel.Codecs
     [CodecFormat("binary", 4)]
     [CodecFormat("binary", 5)]
     [CodecFormat("binary", 9)]
-    class Binary : ICodec
+    class Binary : IDeferredAttributeCodec
     {
         static readonly Dictionary<int, Type?[]> SupportedAttributes = [];
+        BinaryReader? Reader;
 
         /// <summary>
         /// The number of Datamodel binary ticks in one second. Used to store TimeSpan values.
@@ -348,32 +349,32 @@ namespace Datamodel.Codecs
             var dm = new Datamodel(format, format_version);
 
             EncodingVersion = encoding_version;
-            BinaryReader reader = new BinaryReader(stream, Datamodel.TextEncoding);
+            Reader = new BinaryReader(stream, Datamodel.TextEncoding);
 
             if (EncodingVersion >= 9)
             {
                 // Read prefix elements
-                foreach (int prefix_elem in Enumerable.Range(0, reader.ReadInt32()))
+                foreach (int prefix_elem in Enumerable.Range(0, Reader.ReadInt32()))
                 {
-                    foreach (int attr_index in Enumerable.Range(0, reader.ReadInt32()))
+                    foreach (int attr_index in Enumerable.Range(0, Reader.ReadInt32()))
                     {
-                        var name = ReadString_Raw(reader);
-                        var value = DecodeAttribute(dm, true, reader);
+                        var name = ReadString_Raw(Reader);
+                        var value = DecodeAttribute(dm, true, Reader);
                         if (prefix_elem == 0) // skip subsequent elements...are they considered "old versions"?
                             dm.PrefixAttributes[name] = value;
                     }
                 }
             }
 
-            StringDict = new StringDictionary(this, reader);
-            var num_elements = reader.ReadInt32();
+            StringDict = new StringDictionary(this, Reader);
+            var num_elements = Reader.ReadInt32();
 
             // read index
             foreach (var i in Enumerable.Range(0, num_elements))
             {
-                var type = StringDict.ReadString(reader);
-                var name = EncodingVersion >= 4 ? StringDict.ReadString(reader) : ReadString_Raw(reader);
-                var id_bits = reader.ReadBytes(16);
+                var type = StringDict.ReadString(Reader);
+                var name = EncodingVersion >= 4 ? StringDict.ReadString(Reader) : ReadString_Raw(Reader);
+                var id_bits = Reader.ReadBytes(16);
                 var id = new Guid(BitConverter.IsLittleEndian ? id_bits : id_bits.Reverse().ToArray());
 
                 Element? elem = null;
@@ -417,19 +418,19 @@ namespace Datamodel.Codecs
                 // assert if stub
                 Debug.Assert(!elem.Stub);
 
-                var num_attrs = reader.ReadInt32();
+                var num_attrs = Reader.ReadInt32();
 
                 foreach (var i in Enumerable.Range(0, num_attrs))
                 {
-                    var name = StringDict.ReadString(reader);
+                    var name = StringDict.ReadString(Reader);
                     if (defer_mode == DeferredMode.Automatic && reflectionParams.AttemptReflection == false)
                     {
-                        CodecUtilities.AddDeferredAttribute(elem, name, reader.BaseStream.Position);
-                        SkipAttribute(reader);
+                        CodecUtilities.AddDeferredAttribute(elem, name, Reader.BaseStream.Position);
+                        SkipAttribute(Reader);
                     }
                     else
                     {
-                        elem.Add(name, DecodeAttribute(dm, false, reader));
+                        elem.Add(name, DecodeAttribute(dm, false, Reader));
                     }
                 }
             }
@@ -439,10 +440,15 @@ namespace Datamodel.Codecs
 
         int EncodingVersion;
 
-        public object? DeferredDecodeAttribute(Datamodel dm, long offset, BinaryReader reader)
+        public object? DeferredDecodeAttribute(Datamodel dm, long offset)
         {
-            reader.BaseStream.Seek(offset, SeekOrigin.Begin);
-            return DecodeAttribute(dm, false, reader);
+            if(Reader is null)
+            {
+                throw new InvalidDataException("Tried to read a deferred attribute but the reader is invalid");
+            }
+
+            Reader.BaseStream.Seek(offset, SeekOrigin.Begin);
+            return DecodeAttribute(dm, false, Reader);
         }
 
         object? DecodeAttribute(Datamodel dm, bool prefix, BinaryReader reader)

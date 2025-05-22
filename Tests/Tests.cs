@@ -325,14 +325,14 @@ namespace Datamodel_Tests
         [Test]
         public void LoadVmap_Reflection_Binary()
         {
-            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
+            var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
             Test_Vmap_Reflection(unserialisedVmap);
         }
 
         [Test]
         public void LoadVmap_Reflection_Text()
         {
-            var unserialisedVmap = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
+            var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
             Test_Vmap_Reflection(unserialisedVmap);
         }
 
@@ -548,7 +548,7 @@ namespace Datamodel_Tests
         [Test]
         public void Dota2_Binary_9()
         {
-            var dm = DM.Load(Binary_9_File);
+            var dm = DM.Load<Element>(Binary_9_File);
             PrintContents(dm);
             dm.Root.Get<Element>("skeleton").GetArray<Element>("children")[0].Any();
             SaveAndConvert(dm, "binary", 9);
