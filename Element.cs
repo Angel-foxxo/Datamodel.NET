@@ -207,10 +207,10 @@ namespace Datamodel
         /// <exception cref="KeyNotFoundException">Thrown when an attempt is made to get a name that is not present on this Element.</exception>
         public T? Get<T>(string name)
         {
-            object value = this[name];
+            object? value = this[name];
 
             if (value is not T && !(typeof(T) == typeof(Element) && value == null))
-                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value.GetType().Name, typeof(T).Name));
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value?.GetType().Name, typeof(T).Name));
 
             return (T?)value;
         }
@@ -233,7 +233,7 @@ namespace Datamodel
             }
             catch (AttributeTypeException)
             {
-                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name].GetType().Name));
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name]?.GetType().Name));
             }
 
         }
@@ -249,7 +249,7 @@ namespace Datamodel
         /// <exception cref="ElementOwnershipException">Thrown when an attempt is made to set the value of the attribute to an Element from a different <see cref="Datamodel"/>.</exception>
         /// <exception cref="AttributeTypeException">Thrown when an attempt is made to set a value that is not of a valid Datamodel attribute type.</exception>
         /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Attributes allowed in an Element has been reached.</exception>
-        public override object this[string name]
+        public override object? this[string name]
         {
             get
             {

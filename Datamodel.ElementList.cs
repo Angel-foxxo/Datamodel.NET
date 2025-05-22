@@ -45,7 +45,7 @@ namespace Datamodel
                 ChangeLock.EnterUpgradeableReadLock();
                 try
                 {
-                    Element existing = (Element)store[item.ID];
+                    Element? existing = (Element?)store[item.ID];
                     if (existing != null && !existing.Stub)
                     {
                         throw new ElementIdException($"Element ID {item.ID} already in use in this Datamodel.");
@@ -82,14 +82,14 @@ namespace Datamodel
             /// <remarks>The order of this list has no meaning to a Datamodel. This accessor is intended for <see cref="ICodec"/> implementers.</remarks>
             /// <param name="index">The index to look up.</param>
             /// <returns>The Element found at the index.</returns>
-            public Element this[int index]
+            public Element? this[int index]
             {
                 get
                 {
                     ChangeLock.EnterReadLock();
                     try
                     {
-                        return (Element)store[index];
+                        return (Element?)store[index];
                     }
                     finally { ChangeLock.ExitReadLock(); }
                 }
@@ -100,14 +100,14 @@ namespace Datamodel
             /// </summary>
             /// <param name="id">The ID to search for.</param>
             /// <returns>The Element with the given ID, or null if none is found.</returns>
-            public Element this[Guid id]
+            public Element? this[Guid id]
             {
                 get
                 {
                     ChangeLock.EnterReadLock();
                     try
                     {
-                        return (Element)store[id];
+                        return (Element?)store[id];
                     }
                     finally { ChangeLock.ExitReadLock(); }
                 }
@@ -168,7 +168,7 @@ namespace Datamodel
                         try
                         {
                             store.Remove(item.ID);
-                            Element replacement = (mode == RemoveMode.MakeStubs) ? new Element(Owner, item.ID) : (Element)null;
+                            Element? replacement = (mode == RemoveMode.MakeStubs) ? new Element(Owner, item.ID) : null;
 
                             foreach (Element elem in store.Values)
                             {
@@ -179,7 +179,7 @@ namespace Datamodel
                                         elem[attr.Key] = replacement;
                                     }
 
-                                    foreach (var array in elem.Select(a => a.Value).OfType<IList<Element>>())
+                                    foreach (var array in elem.Select(a => a.Value).OfType<IList<Element?>>())
                                         for (int i = 0; i < array.Count; i++)
                                             if (array[i] == item)
                                                 array[i] = replacement;
@@ -210,7 +210,7 @@ namespace Datamodel
                 ChangeLock.EnterUpgradeableReadLock();
                 try
                 {
-                    var used = new HashSet<Element>();
+                    var used = new HashSet<Element?>();
                     WalkElemTree(Owner.Root, used);
                     if (used.Count == Count) return;
 
@@ -219,8 +219,11 @@ namespace Datamodel
                     {
                         foreach (var elem in this.Except(used).ToArray())
                         {
-                            store.Remove(elem.ID);
-                            elem.Owner = null;
+                            if(elem != null)
+                            {
+                                store.Remove(elem.ID);
+                                elem.Owner = null;
+                            }
                         }
 
                         CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, (System.Collections.IList)used));
@@ -236,8 +239,13 @@ namespace Datamodel
                 }
             }
 
-            protected void WalkElemTree(Element elem, HashSet<Element> found)
+            protected void WalkElemTree(Element? elem, HashSet<Element?> found)
             {
+                if(elem is null)
+                {
+                    return;
+                }
+
                 found.Add(elem);
                 foreach (var value in elem.Inner.Values.Cast<Attribute>().Select(a => a.RawValue))
                 {
@@ -279,7 +287,7 @@ namespace Datamodel
             /// <summary>
             /// Raised when an <see cref="Element"/> is added, removed, or replaced.
             /// </summary>
-            public event NotifyCollectionChangedEventHandler CollectionChanged;
+            public event NotifyCollectionChangedEventHandler? CollectionChanged;
             #endregion
 
             public void Dispose()

@@ -215,12 +215,12 @@ namespace Datamodel
         /// <exception cref="ElementOwnershipException">Thrown when an attempt is made to set the value of the attribute to an Element from a different <see cref="Datamodel"/>.</exception>
         /// <exception cref="AttributeTypeException">Thrown when an attempt is made to set a value that is not of a valid Datamodel attribute type.</exception>
         /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Attributes allowed in an AttributeList has been reached.</exception>        
-        public virtual object this[string name]
+        public virtual object? this[string name]
         {
             get
             {
                 ArgumentNullException.ThrowIfNull(name);
-                var attr = (Attribute)Inner[name];
+                var attr = (Attribute?)Inner[name];
                 if (attr == null)
                 {
                     var prop_attr = (PropertyInfo)PropertyInfos[name];

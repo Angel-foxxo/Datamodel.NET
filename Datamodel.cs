@@ -466,7 +466,7 @@ namespace Datamodel
         /// Gets or sets the first Element of the Datamodel. Only Elements referenced by the Root element or one of its children are considered a part of the Datamodel.
         /// </summary>
         /// <exception cref="ElementOwnershipException">Thown when an attempt is made to assign an Element from another Datamodel to this property.</exception>
-        public Element Root
+        public Element? Root
         {
             get => _Root;
             set
@@ -482,7 +482,7 @@ namespace Datamodel
                 OnPropertyChanged();
             }
         }
-        Element _Root;
+        Element? _Root;
 
         public AttributeList PrefixAttributes
         {
