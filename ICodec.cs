@@ -4,6 +4,7 @@ using System.IO;
 using System.Numerics;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Datamodel.Codecs
 {
@@ -198,17 +199,54 @@ namespace Datamodel.Codecs
                 {
                     foreach (var classType in assembly.DefinedTypes)
                     {
-                        types.TryAdd(classType.Name, classType);
+                        if (classType.IsSubclassOf(typeof(Element)))
+                        {
+                            types.TryAdd(classType.Name, classType);
+                        }
                     }
                 }
 
                 foreach (var type in reflectionParams.AdditionalTypes)
                 {
-                    types.TryAdd(type.Name, type);
+                    if (type.IsSubclassOf(typeof(Element)))
+                    {
+                        types.TryAdd(type.Name, type);
+                    }
                 }
             }
 
             return types;
+        }
+
+        public static bool TryConstructCustomElement(Dictionary<string, Type> types, Datamodel dataModel, string elem_class, string elem_name, Guid elem_id, out Element? elem)
+        {
+            var matchedType = types.TryGetValue(elem_class, out var classType);
+
+            if (!matchedType || classType is null)
+            {
+                elem = null;
+                return false;
+            }
+
+            Type derivedType = classType;
+
+            ConstructorInfo? constructor = typeof(Element).GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
+                null
+            );
+
+            if (constructor == null)
+            {
+                throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
+            }
+
+            object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
+            constructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
+
+            elem = (Element?)uninitializedObject;
+            return true;
         }
     }
 

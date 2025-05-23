@@ -509,35 +509,8 @@ namespace Datamodel.Codecs
                     var id = new Guid(elem_id);
                     if (elem_class != "$prefix_element$")
                     {
-                        var matchedType = types.TryGetValue(elem_class, out var classType);
-
-                        if (matchedType && classType != null && reflectionParams.AttemptReflection)
-                        {
-                            var isElementDerived = Element.IsElementDerived(classType);
-                            if (isElementDerived && classType.Name == elem_class)
-                            {
-                                Type derivedType = classType;
-
-                                ConstructorInfo? constructor = typeof(Element).GetConstructor(
-                                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                                    null,
-                                    [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
-                                    null
-                                );
-
-                                if (constructor == null)
-                                {
-                                    throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
-                                }
-
-                                object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
-                                constructor.Invoke(uninitializedObject, [dataModel, elem_name, new Guid(elem_id), elem_class]);
-
-                                elem = (Element?)uninitializedObject;
-                            }
-                        }
-
-                        elem ??= new Element(dataModel, elem_name, new Guid(elem_id), elem_class);
+                        CodecUtilities.TryConstructCustomElement(types, dataModel, elem_class, elem_name, id, out elem);
+                        elem ??= new Element(dataModel, elem_name, id, elem_class);
                     }
 
                     continue;

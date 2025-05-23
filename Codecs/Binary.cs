@@ -377,38 +377,10 @@ namespace Datamodel.Codecs
                 var id_bits = Reader.ReadBytes(16);
                 var id = new Guid(BitConverter.IsLittleEndian ? id_bits : id_bits.Reverse().ToArray());
 
-                Element? elem = null;
-                var matchedType = types.TryGetValue(type, out var classType);
-
-                if(matchedType && classType != null && reflectionParams.AttemptReflection)
+                if (!CodecUtilities.TryConstructCustomElement(types, dm, type, name, id, out _))
                 {
-                    var isElementDerived = Element.IsElementDerived(classType);
-                    if (isElementDerived && classType.Name == type)
-                    {
-                        Type derivedType = classType;
-                
-                        ConstructorInfo? constructor = typeof(Element).GetConstructor(
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                            null,
-                            [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
-                            null
-                        );
-                
-                        if (constructor == null)
-                        {
-                            throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
-                        }
-                
-                        object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
-                        constructor.Invoke(uninitializedObject, [dm, name, id, type]);
-                
-                        elem = (Element?)uninitializedObject;
-                    }
-                }
-                
-                if (elem == null)
-                {
-                    elem = new Element(dm, name, id, type);
+                    // note: constructing an element, adds it to the datamodel.AllElements
+                    _ = new Element(dm, name, id, type);
                 }
             }
 
@@ -423,7 +395,7 @@ namespace Datamodel.Codecs
                 foreach (var i in Enumerable.Range(0, num_attrs))
                 {
                     var name = StringDict.ReadString(Reader);
-                    if (defer_mode == DeferredMode.Automatic && reflectionParams.AttemptReflection == false)
+                    if (defer_mode == DeferredMode.Automatic)
                     {
                         CodecUtilities.AddDeferredAttribute(elem, name, Reader.BaseStream.Position);
                         SkipAttribute(Reader);
