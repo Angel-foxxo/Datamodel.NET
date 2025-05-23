@@ -270,10 +270,10 @@ namespace Datamodel
         /// <param name="data">The input byte array.</param>
         /// <param name="defer_mode">How to handle deferred loading.</param>
         /// <typeparam  name="T">Type hint for what the Root of this datamodel should be when using reflection</param>
-        public static Datamodel Load<T>(byte[] data, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
+        public static Datamodel Load<T>(byte[] data, ReflectionParams? reflectionParams = null)
              where T : Element
         {
-            return Load_Internal<T>(new MemoryStream(data, true), Assembly.GetCallingAssembly(), defer_mode, reflectionParams);
+            return Load_Internal<T>(new MemoryStream(data, true), Assembly.GetCallingAssembly(), DeferredMode.Disabled, reflectionParams);
         }
 
         /// <summary>
@@ -296,25 +296,15 @@ namespace Datamodel
             }
         }
         /// <summary>
-        /// Loads a Datamodel from a file path.
+        /// Loads a Datamodel from a file path, unserializing the Root as <typeparamref name="T"/>.
         /// </summary>
         /// <param name="path">The source file path.</param>
-        /// <param name="defer_mode">How to handle deferred loading.</param>
         /// <typeparam  name="T">Type hint for what the Root of this datamodel should be when using reflection</param>
-        public static Datamodel Load<T>(string path, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
+        public static Datamodel Load<T>(string path, ReflectionParams? reflectionParams = null)
             where T : Element
         {
-            var stream = File.OpenRead(path);
-            Datamodel? dm = null;
-            try
-            {
-                dm = Load_Internal<T>(stream, Assembly.GetCallingAssembly(), defer_mode, reflectionParams);
-                return dm;
-            }
-            finally
-            {
-                if (defer_mode == DeferredMode.Disabled || (dm != null && dm.Codec == null)) stream.Dispose();
-            }
+            using var stream = File.OpenRead(path);
+            return Load_Internal<T>(stream, Assembly.GetCallingAssembly(), DeferredMode.Disabled, reflectionParams);
         }
 
         private static Datamodel Load_Internal<T>(Stream stream, Assembly callingAssembly, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)

@@ -20,9 +20,7 @@ namespace Datamodel_Tests
         protected FileStream Binary_4_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/binary4.dmx");
         protected FileStream KeyValues2_1_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05.dmx");
 
-        // TODO: would be nice if this could find this path automatically
-        //const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
-        const string GameBin = @"D:/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
+        const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
 
         static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
         static readonly bool DmxConvertExe_Exists = File.Exists(DmxConvertExe);
@@ -294,7 +292,7 @@ namespace Datamodel_Tests
             Assert.AreEqual(0, array.Count);
         }
 
-        private void Test_Vmap_Reflection(Datamodel.Datamodel unserialisedVmap)
+        private static void Validate_Vmap_Reflection(Datamodel.Datamodel unserialisedVmap)
         {
             Assert.AreEqual(typeof(CMapRootElement), unserialisedVmap.Root.GetType());
 
@@ -326,14 +324,14 @@ namespace Datamodel_Tests
         public void LoadVmap_Reflection_Binary()
         {
             var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
-            Test_Vmap_Reflection(unserialisedVmap);
+            Validate_Vmap_Reflection(unserialisedVmap);
         }
 
         [Test]
         public void LoadVmap_Reflection_Text()
         {
             var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
-            Test_Vmap_Reflection(unserialisedVmap);
+            Validate_Vmap_Reflection(unserialisedVmap);
         }
 
         public class NullOwnerElement

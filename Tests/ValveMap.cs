@@ -4,6 +4,8 @@ using DMElement = Datamodel.Element;
 
 namespace VMAP;
 
+#nullable enable
+
 /// <summary>
 ///  Valve Map (VMAP) format version 29.
 /// </summary>
