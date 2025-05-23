@@ -27,7 +27,7 @@ namespace Datamodel
         /// <param name="name">An arbitrary string. Does not have to be unique, and can be null.</param>
         /// <param name="class_name">An arbitrary string which loosely defines the type of Element this is. Cannot be null.</param>
         /// <exception cref="IndexOutOfRangeException">Thrown when the owner already contains the maximum number of Elements allowed in a Datamodel.</exception>
-        public Element(Datamodel owner, string name, Guid? id = null, string classNameOverride = "")
+        public Element(Datamodel owner, string name, Guid? id = null, string? classNameOverride = null)
             : base(owner)
         {
             ArgumentNullException.ThrowIfNull(owner);
@@ -174,18 +174,13 @@ namespace Datamodel
             foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 // Check if the property is an auto-property and is declared by a subclass of Element
-                var declaringType = property.DeclaringType;
+                var declaringType = property.DeclaringType!;
 
-                if(declaringType is null)
-                {
-                    throw new InvalidOperationException("Declaring type is null");
-                }
-
-                if (property.GetIndexParameters().Length == 0 && declaringType.IsSubclassOf(typeof(Element)))
+                if (declaringType.IsSubclassOf(typeof(Element)))
                 {
                     var name = property.Name;
+                    name = declaringType.GetCustomAttribute<Format.AttributeNamingConventionAttribute>()?.GetAttributeName(name, property.PropertyType) ?? name;
                     name = property.GetCustomAttribute<Format.DMProperty>()?.Name ?? name;
-
                     properties.Add((name, property));
                 }
             }
