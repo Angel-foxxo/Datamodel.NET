@@ -27,8 +27,8 @@ namespace Datamodel_Tests
 
         static DatamodelTests()
         {
-            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("fr-FR");
 
             var binary = new byte[16];
             Random.Shared.NextBytes(binary);
