@@ -261,13 +261,11 @@ namespace Datamodel
                 if (Owner != null && this == Owner.PrefixAttributes && value?.GetType() == typeof(Element))
                     throw new AttributeTypeException("Elements are not supported as prefix attributes.");
 
-                var prop_attr = (PropertyInfo?)PropertyInfos[name];
+                var prop = (PropertyInfo?)PropertyInfos[name];
 
-                if (prop_attr != null)
+                if (prop != null)
                 {
-                    PropertyInfo? prop = GetType().GetProperty(prop_attr.Name, BindingFlags.Public | BindingFlags.Instance);
-
-                    if (prop != null && prop.CanWrite)
+                    if (prop.CanWrite)
                     {
                         // were actually fine with this being null, it will just set the value to null
                         // but need to check so the type check doesn't fail if it is null
@@ -284,6 +282,24 @@ namespace Datamodel
                     }
                     else
                     {
+                        var existingArray = prop.GetValue(this) as Array<Element>;
+                        var incomingArray = value as Array<Element>;
+
+                        if (existingArray is not null && incomingArray is not null)
+                        {
+                            // special case for reflection based deserialization
+                            if (existingArray.Count == 0)
+                            {
+                                existingArray.AddRange(incomingArray);
+                                return;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException($"Attribute '{name}' modifies property {prop.DeclaringType!.Name}.{prop.Name}, which is write only and can't be replaced.");
+                            }
+                        }
+
+
                         throw new InvalidDataException("Property of deserialisation class must be writeable, make sure it's public and has a public setter");
                     }
 

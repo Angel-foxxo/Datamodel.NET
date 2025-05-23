@@ -175,16 +175,17 @@ internal class CMapVariableSet : DMElement
 }
 
 
+[CamelCaseProperties]
 internal class CMapSelectionSet : DMElement
 {
-    public Datamodel.ElementArray children { get; set; } = [];
-    public string selectionSetName { get; set; } = string.Empty;
-    public CObjectSelectionSetDataElement selectionSetData { get; set; } = [];
+    public Datamodel.ElementArray Children { get; } = [];
+    public string SelectionSetName { get; set; } = string.Empty;
+    public CObjectSelectionSetDataElement SelectionSetData { get; set; } = [];
 
     public CMapSelectionSet() { }
     public CMapSelectionSet(string name)
     {
-        selectionSetName = name;
+        SelectionSetName = name;
     }
 }
 
@@ -202,13 +203,14 @@ internal class CMapEntity : BaseEntity
 }
 
 
+[LowercaseProperties]
 internal class CMapInstance : BaseEntity
 {
     /// <summary>
     /// A target <see cref="CMapGroup"/> to instance. With custom tint and transform.
     /// </summary>
-    public CMapGroup? target { get; set; }
-    public Datamodel.Color tintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
+    public CMapGroup? Target { get; set; }
+    public Datamodel.Color TintColor { get; set; } = new Datamodel.Color(255, 255, 255, 255);
 }
 
 internal class CMapGroup : MapNode

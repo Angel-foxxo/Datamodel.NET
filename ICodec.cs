@@ -230,20 +230,38 @@ namespace Datamodel.Codecs
 
             Type derivedType = classType;
 
-            ConstructorInfo? constructor = typeof(Element).GetConstructor(
+            ConstructorInfo? elementConstructor = typeof(Element).GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
                 [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
                 null
             );
 
-            if (constructor == null)
+            var customClassInitializer = derivedType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                [],
+                null
+            );
+
+            if (elementConstructor == null)
             {
                 throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
             }
 
+            if (customClassInitializer == null)
+            {
+                throw new InvalidOperationException("Failed to get custom element constructor.");
+            }
+
             object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
-            constructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
+
+            elementConstructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
+
+            // this will initialize values such as
+            // public Datamodel.ElementArray Children { get; } = [];
+            customClassInitializer.Invoke(uninitializedObject, []);
+
 
             elem = (Element?)uninitializedObject;
             return true;
