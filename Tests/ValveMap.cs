@@ -342,7 +342,7 @@ internal class CDmePolygonMesh : MapNode
 
 internal class CDmePolygonMeshDataArray : DMElement
 {
-    public int Size { get; set; }
+    public int size { get; set; }
     /// <summary>
     /// Array of <see cref="CDmePolygonMeshDataStream"/>.
     /// </summary>

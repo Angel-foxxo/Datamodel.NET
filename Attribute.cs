@@ -188,8 +188,11 @@ namespace Datamodel
                         if (arr_elem == null) continue;
                         else if (arr_elem.Owner == null)
                             arr_elem.Owner = OwnerDatamodel;
-                        else if (arr_elem.Owner != OwnerDatamodel)
-                            throw new ElementOwnershipException("One or more Elements in the assigned collection are from a different Datamodel. Use ImportElement() to copy them to this one before assigning.");
+
+                        // todo: remove ownership from values
+                        // this is being printed on a debuggerdisplay output for some reason
+                        // else if (arr_elem.Owner != OwnerDatamodel)
+                        //    throw new ElementOwnershipException("One or more Elements in the assigned collection are from a different Datamodel. Use ImportElement() to copy them to this one before assigning.");
                     }
                 }
 

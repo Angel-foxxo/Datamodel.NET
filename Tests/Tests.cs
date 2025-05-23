@@ -10,6 +10,7 @@ using System.Numerics;
 using DM = Datamodel.Datamodel;
 using System.Globalization;
 using VMAP;
+using Vector3Data = VMAP.CDmePolygonMeshDataStream<System.Numerics.Vector3>;
 
 namespace Datamodel_Tests
 {
@@ -315,6 +316,14 @@ namespace Datamodel_Tests
 
             var meshes = world.children.Where(i => i.ClassName == "CMapMesh").OfType<CMapMesh>().ToList();
             var mesh = meshes[0];
+
+            var vertexData = mesh.meshData.vertexData;
+
+            Assert.AreEqual(vertexData.size, 8);
+            Assert.AreEqual(vertexData.streams[0]["semanticName"], "position");
+
+            // todo: vertexData.streams[0] is not a instance of CDmePolygonMeshDataStream<Vector3>
+            // Assert.AreEqual(((Vector3Data)vertexData.streams[0]).semanticName, "position");
 
             Assert.That(unserialisedVmap.PrefixAttributes["map_asset_references"], Is.Not.Empty);
 
