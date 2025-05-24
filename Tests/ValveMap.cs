@@ -359,8 +359,7 @@ internal class CDmePolygonMeshSubdivisionData : DMElement
     public Datamodel.ElementArray streams { get; set; } = [];
 }
 
-
-internal class CDmePolygonMeshDataStream<T> : DMElement
+internal class CDmePolygonMeshDataStream : DMElement
 {
     public string standardAttributeName { get; set; } = string.Empty;
     public string semanticName { get; set; } = string.Empty;
@@ -371,5 +370,14 @@ internal class CDmePolygonMeshDataStream<T> : DMElement
     /// <summary>
     /// An int, vector2, vector3, or vector4 array.
     /// </summary>
-    public required Datamodel.Array<T> data { get; set; }
+    public System.Collections.IList? data { get; set; }
+}
+
+/// <remarks>
+/// Note: The deserializer does not support generic types, but the serializer does.
+/// </remarks>
+/// <typeparam name="T">Int, Vector2, Vector3, or Vector4</typeparam>
+internal class CDmePolygonMeshDataStream<T> : CDmePolygonMeshDataStream
+{
+    public new required Datamodel.Array<T> data { get; set; }
 }
