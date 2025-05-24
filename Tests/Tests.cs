@@ -329,6 +329,23 @@ namespace Datamodel_Tests
 
             Assert.That(unserialisedVmap.PrefixAttributes["map_asset_references"], Is.Not.Empty);
 
+            // iterate all datamodel elements, and verify that all their types are superclasses of Element
+            foreach (var elem in unserialisedVmap.AllElements)
+            {
+                if (elem.Name == "subdivisionBinding")
+                {
+                    continue; // known case, skip
+                }
+
+                // prefix elements, still an Element type
+                if (elem.ContainsKey("map_asset_references"))
+                {
+                    continue;
+                }
+
+                Assert.That(elem, Is.Not.TypeOf<Element>(), $"Found object {elem.ID} {elem.ClassName} that is still an Element type.");
+            }
+
         }
 
         [Test]
