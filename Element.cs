@@ -27,7 +27,7 @@ namespace Datamodel
         /// <param name="name">An arbitrary string. Does not have to be unique, and can be null.</param>
         /// <param name="class_name">An arbitrary string which loosely defines the type of Element this is. Cannot be null.</param>
         /// <exception cref="IndexOutOfRangeException">Thrown when the owner already contains the maximum number of Elements allowed in a Datamodel.</exception>
-        public Element(Datamodel owner, string name, Guid? id = null, string classNameOverride = null)
+        public Element(Datamodel owner, string name, Guid? id = null, string? classNameOverride = null)
             : base(owner)
         {
             ArgumentNullException.ThrowIfNull(owner);
@@ -104,7 +104,7 @@ namespace Datamodel
                 _Name = value; OnPropertyChanged();
             }
         }
-        string _Name;
+        string _Name = string.Empty;
 
         /// <summary>
         /// Gets or sets the class of this Element. This is a string which loosely defines what <see cref="Attribute"/>s the Element contains.
@@ -137,7 +137,7 @@ namespace Datamodel
         /// <summary>
         /// Gets the <see cref="Datamodel"/> that this Element is owned by.
         /// </summary>
-        public new Datamodel Owner
+        public new Datamodel? Owner
         {
             get => base.Owner;
             internal set
@@ -161,7 +161,8 @@ namespace Datamodel
 
         #region Properties
 
-        protected override ICollection<(string Name, PropertyInfo Property)> GetPropertyDerivedAttributeList()
+        // TODO: this could probably be sped up by caching the properties somehow
+        protected override ICollection<(string Name, PropertyInfo Property)>? GetPropertyDerivedAttributeList()
         {
             var type = GetType();
             if (type == typeof(Element))
@@ -173,13 +174,13 @@ namespace Datamodel
             foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 // Check if the property is an auto-property and is declared by a subclass of Element
-                if (property.GetIndexParameters().Length == 0 && property.DeclaringType.IsSubclassOf(typeof(Element)))
+                var declaringType = property.DeclaringType!;
+
+                if (declaringType.IsSubclassOf(typeof(Element)))
                 {
                     var name = property.Name;
-                    name = property.DeclaringType.GetCustomAttribute<Format.AttributeNamingConventionAttribute>()?
-                        .GetAttributeName(name, property.PropertyType) ?? name;
+                    name = declaringType.GetCustomAttribute<Format.AttributeNamingConventionAttribute>()?.GetAttributeName(name, property.PropertyType) ?? name;
                     name = property.GetCustomAttribute<Format.DMProperty>()?.Name ?? name;
-
                     properties.Add((name, property));
                 }
             }
@@ -199,14 +200,14 @@ namespace Datamodel
         /// <exception cref="ArgumentNullException">Thrown when the value of name is null.</exception>
         /// <exception cref="AttributeTypeException">Thrown when the value of the requested Attribute is not compatible with T.</exception>
         /// <exception cref="KeyNotFoundException">Thrown when an attempt is made to get a name that is not present on this Element.</exception>
-        public T Get<T>(string name)
+        public T? Get<T>(string name)
         {
-            object value = this[name];
+            object? value = this[name];
 
             if (value is not T && !(typeof(T) == typeof(Element) && value == null))
-                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value.GetType().Name, typeof(T).Name));
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) does not implement {2}.", name, value?.GetType().Name, typeof(T).Name));
 
-            return (T)value;
+            return (T?)value;
         }
 
         /// <summary>
@@ -219,7 +220,7 @@ namespace Datamodel
         /// <exception cref="ArgumentNullException">Thrown when the value of name is null.</exception>
         /// <exception cref="AttributeTypeException">Thrown when the value of the requested Attribute is not compatible with IList&lt;T&gt;.</exception>
         /// <exception cref="KeyNotFoundException">Thrown when an attempt is made to get a name that is not present on this Element.</exception>
-        public IList<T> GetArray<T>(string name)
+        public IList<T>? GetArray<T>(string name)
         {
             try
             {
@@ -227,7 +228,7 @@ namespace Datamodel
             }
             catch (AttributeTypeException)
             {
-                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name].GetType().Name));
+                throw new AttributeTypeException(string.Format("Attribute \"{0}\" ({1}) is not an array.", name, this[name]?.GetType().Name));
             }
 
         }
@@ -243,7 +244,7 @@ namespace Datamodel
         /// <exception cref="ElementOwnershipException">Thrown when an attempt is made to set the value of the attribute to an Element from a different <see cref="Datamodel"/>.</exception>
         /// <exception cref="AttributeTypeException">Thrown when an attempt is made to set a value that is not of a valid Datamodel attribute type.</exception>
         /// <exception cref="IndexOutOfRangeException">Thrown when the maximum number of Attributes allowed in an Element has been reached.</exception>
-        public override object this[string name]
+        public override object? this[string name]
         {
             get
             {
@@ -279,9 +280,9 @@ namespace Datamodel
             /// </summary>
             public static NameComparer Default { get; } = new NameComparer();
 
-            public bool Equals(Element x, Element y)
+            public bool Equals(Element? x, Element? y)
             {
-                return x.Name == y.Name;
+                return x?.Name == y?.Name;
             }
 
             public int GetHashCode(Element obj)
@@ -289,9 +290,9 @@ namespace Datamodel
                 return obj.Name.GetHashCode();
             }
 
-            bool IEqualityComparer.Equals(object x, object y)
+            bool IEqualityComparer.Equals(object? x, object? y)
             {
-                return Equals((Element)x, (Element)y);
+                return Equals((Element?)x, (Element?)y);
             }
 
             int IEqualityComparer.GetHashCode(object obj)
@@ -309,9 +310,9 @@ namespace Datamodel
             /// </summary>
             public static ClassNameComparer Default { get; } = new ClassNameComparer();
 
-            public bool Equals(Element x, Element y)
+            public bool Equals(Element? x, Element? y)
             {
-                return x.ClassName == y.ClassName;
+                return x?.ClassName == y?.ClassName;
             }
 
             public int GetHashCode(Element obj)
@@ -319,9 +320,9 @@ namespace Datamodel
                 return obj.ClassName.GetHashCode();
             }
 
-            bool IEqualityComparer.Equals(object x, object y)
+            bool IEqualityComparer.Equals(object? x, object? y)
             {
-                return Equals((Element)x, (Element)y);
+                return Equals((Element?)x, (Element?)y);
             }
 
             int IEqualityComparer.GetHashCode(object obj)
@@ -339,9 +340,9 @@ namespace Datamodel
             /// </summary>
             public static IDComparer Default { get; } = new IDComparer();
 
-            public bool Equals(Element x, Element y)
+            public bool Equals(Element? x, Element? y)
             {
-                return x.ID == y.ID;
+                return x?.ID == y?.ID;
             }
 
             public int GetHashCode(Element obj)
@@ -349,9 +350,9 @@ namespace Datamodel
                 return obj.ID.GetHashCode();
             }
 
-            bool IEqualityComparer.Equals(object x, object y)
+            bool IEqualityComparer.Equals(object? x, object? y)
             {
-                return Equals((Element)x, (Element)y);
+                return Equals((Element?)x, (Element?)y);
             }
 
             int IEqualityComparer.GetHashCode(object obj)
@@ -378,7 +379,7 @@ namespace Datamodel
             return base.ContainsKey(key);
         }
 
-        public bool Equals(Element other)
+        public bool Equals(Element? other)
         {
             return other != null && ID == other.ID;
         }
@@ -388,13 +389,13 @@ namespace Datamodel
     {
         public class ElementConverter : TypeConverter
         {
-            public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
             {
                 if (sourceType == typeof(string) || sourceType == typeof(Guid)) return true;
                 return base.CanConvertFrom(context, sourceType);
             }
 
-            public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value)
+            public override object? ConvertFrom(ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object value)
             {
                 Guid guid_value;
 
@@ -416,8 +417,10 @@ namespace Datamodel
                 return result;
             }
 
-            public override bool IsValid(ITypeDescriptorContext context, object value)
+            public override bool IsValid(ITypeDescriptorContext? context, object? value)
             {
+                if (value is null)
+                    return false;
                 if (value is Guid)
                     return true;
                 if (value is string str_value && Guid.TryParse(str_value, out _))
@@ -425,15 +428,17 @@ namespace Datamodel
                 return false;
             }
 
-            public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+            public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
             {
                 if (destinationType == typeof(Guid) || destinationType == typeof(string))
                     return true;
                 return base.CanConvertTo(context, destinationType);
             }
 
-            public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType)
+            public override object? ConvertTo(ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, Type destinationType)
             {
+                if (value is null)
+                    return null;
                 var element = (Element)value;
                 if (destinationType == typeof(Guid))
                     return element.ID;

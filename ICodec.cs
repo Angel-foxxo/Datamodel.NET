@@ -2,6 +2,9 @@
 using System.Linq;
 using System.IO;
 using System.Numerics;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Datamodel.Codecs
 {
@@ -29,8 +32,23 @@ namespace Datamodel.Codecs
         /// <param name="stream">The input stream. Its position will always be 0. Do not dispose.</param>
         /// <param name="defer_mode">The deferred loading mode specified by the caller. Only relevant to implementers of <see cref="IDeferredAttributeCodec"/></param>
         /// <returns></returns>
-        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode);
+        Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, ReflectionParams reflectionParams);
     }
+
+    /// <summary>
+    /// Parameters for reflection based deserialisation
+    /// By default it will look for types in the calling assembly (the one which made this class)
+    /// </summary>
+    /// <param name="attemptReflection">If to use reflection or not.</param>
+    /// <param name="additionalTypes">Additional types to consider when matching.</param>
+    /// <param name="assembliesToSearch">Additional assemblies to look for types in.</param>
+    public class ReflectionParams(bool attemptReflection = true, List<Type>? additionalTypes = null, List<Assembly>? assembliesToSearch = null)
+    {
+        public bool AttemptReflection = attemptReflection;
+        public List<Type> AdditionalTypes = additionalTypes ??= [];
+        public List<Assembly> AssembliesToSearch = assembliesToSearch ??= [];
+    }
+
 
     /// <summary>
     /// Defines methods for the deferred loading of <see cref="Attribute"/> values.
@@ -48,7 +66,7 @@ namespace Datamodel.Codecs
         /// <param name="dm">The <see cref="Datamodel"/> to which the Attribute belongs.</param>
         /// <param name="offset">The offset at which the Attribute begins in the source <see cref="Stream"/>.</param>
         /// <returns>The Attribute's value.</returns>
-        object DeferredDecodeAttribute(Datamodel dm, long offset);
+        object? DeferredDecodeAttribute(Datamodel dm, long offset);
     }
 
     /// <summary>
@@ -170,6 +188,84 @@ namespace Datamodel.Codecs
             if (offset <= 0) throw new ArgumentOutOfRangeException(nameof(offset), "Address must be greater than 0.");
             elem.Add(key, offset);
         }
+
+        public static Dictionary<string, Type> GetReflectionTypes(ReflectionParams reflectionParams)
+        {
+            Dictionary<string, Type> types = [];
+
+            if (reflectionParams.AttemptReflection)
+            {
+                foreach (var assembly in reflectionParams.AssembliesToSearch)
+                {
+                    foreach (var classType in assembly.DefinedTypes)
+                    {
+                        if (classType.IsSubclassOf(typeof(Element)))
+                        {
+                            types.TryAdd(classType.Name, classType);
+                        }
+                    }
+                }
+
+                foreach (var type in reflectionParams.AdditionalTypes)
+                {
+                    if (type.IsSubclassOf(typeof(Element)))
+                    {
+                        types.TryAdd(type.Name, type);
+                    }
+                }
+            }
+
+            return types;
+        }
+
+        public static bool TryConstructCustomElement(Dictionary<string, Type> types, Datamodel dataModel, string elem_class, string elem_name, Guid elem_id, out Element? elem)
+        {
+            var matchedType = types.TryGetValue(elem_class, out var classType);
+
+            if (!matchedType || classType is null)
+            {
+                elem = null;
+                return false;
+            }
+
+            Type derivedType = classType;
+
+            ConstructorInfo? elementConstructor = typeof(Element).GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                [typeof(Datamodel), typeof(string), typeof(Guid), typeof(string)],
+                null
+            );
+
+            var customClassInitializer = derivedType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                [],
+                null
+            );
+
+            if (elementConstructor == null)
+            {
+                throw new InvalidOperationException("Failed to get constructor while attemption reflection based deserialisation");
+            }
+
+            if (customClassInitializer == null)
+            {
+                throw new InvalidOperationException("Failed to get custom element constructor.");
+            }
+
+            object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
+
+            elementConstructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
+
+            // this will initialize values such as
+            // public Datamodel.ElementArray Children { get; } = [];
+            customClassInitializer.Invoke(uninitializedObject, []);
+
+
+            elem = (Element?)uninitializedObject;
+            return true;
+        }
     }
 
     [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
@@ -195,7 +291,7 @@ namespace Datamodel.Codecs
         public CodecFormatAttribute(string name, int version)
         {
             Name = name;
-            Versions = new int[] { version };
+            Versions = [version];
         }
 
         public string Name { get; private set; }

@@ -5,12 +5,14 @@
     <RootNamespace>Datamodel_Tests</RootNamespace>
     <AssemblyName>Datamodel.NET-Tests</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <ItemGroup>
     <None Include="Resources\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Resources\vmap.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Datamodel.NET.csproj" />

@@ -10,21 +10,17 @@ namespace Datamodel
     [DebuggerDisplay("Count = {Inner.Count}")]
     public abstract class Array<T> : IList<T>, IList
     {
-        internal class DebugView
+        internal class DebugView(Array<T> arr)
         {
-            public DebugView(Array<T> arr)
-            {
-                Arr = arr;
-            }
-            Array<T> Arr;
+            readonly Array<T> Arr = arr;
 
             [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-            public T[] Items { get { return Arr.Inner.ToArray(); } }
+            public T[] Items { get { return [.. Arr.Inner]; } }
         }
 
         protected List<T> Inner;
 
-        public virtual AttributeList Owner
+        public virtual AttributeList? Owner
         {
             get => _Owner;
             internal set
@@ -32,21 +28,21 @@ namespace Datamodel
                 _Owner = value;
             }
         }
-        AttributeList _Owner;
+        AttributeList? _Owner;
 
-        protected Datamodel OwnerDatamodel => Owner?.Owner;
+        protected Datamodel? OwnerDatamodel => Owner?.Owner;
 
         internal Array()
         {
-            Inner = new List<T>();
+            Inner = [];
         }
 
         internal Array(IEnumerable<T> enumerable)
         {
             if (enumerable != null)
-                Inner = new List<T>(enumerable);
+                Inner = [.. enumerable];
             else
-                Inner = new List<T>();
+                Inner = [];
         }
 
         internal Array(int capacity)
@@ -94,7 +90,7 @@ namespace Datamodel
 
         public object SyncRoot => throw new NotImplementedException();
 
-        object IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        object? IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public bool Remove(T item) => Inner.Remove(item);
 
@@ -102,32 +98,44 @@ namespace Datamodel
         IEnumerator IEnumerable.GetEnumerator() => Inner.GetEnumerator();
 
         #region IList
-        int IList.Add(object value)
+        int IList.Add(object? value)
         {
-            Add((T)value);
+            if (value is not null)
+                Add((T)value);
             return Count;
         }
 
-        bool IList.Contains(object value)
+        bool IList.Contains(object? value)
         {
+            if (value is null)
+                return false;
             return Contains((T)value);
         }
 
-        int IList.IndexOf(object value)
+        int IList.IndexOf(object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to get the index of a null object");
+
             return IndexOf((T)value);
         }
 
-        void IList.Insert(int index, object value)
+        void IList.Insert(int index, object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to insert a null object");
+
             Insert(index, (T)value);
         }
 
         bool IList.IsFixedSize { get { return false; } }
         bool IList.IsReadOnly { get { return false; } }
 
-        void IList.Remove(object value)
+        void IList.Remove(object? value)
         {
+            if (value is null)
+                throw new InvalidOperationException("Trying to remove a null object");
+
             Remove((T)value);
         }
 
@@ -156,7 +164,7 @@ namespace Datamodel
         /// </summary>
         internal IEnumerable<Element> RawList { get { foreach (var elem in Inner) yield return elem; } }
 
-        public override AttributeList Owner
+        public override AttributeList? Owner
         {
             get => base.Owner;
             internal set
@@ -172,7 +180,12 @@ namespace Datamodel
                         if (elem == null) continue;
                         if (elem.Owner == null)
                         {
-                            Inner[i] = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
+                            var importedElement = OwnerDatamodel.ImportElement(elem, Datamodel.ImportRecursionMode.Stubs, Datamodel.ImportOverwriteMode.Stubs);
+                            
+                            if(importedElement is not null)
+                            {
+                                Inner[i] = importedElement;
+                            }
                         }
                         else if (elem.Owner != OwnerDatamodel)
                             throw new ElementOwnershipException();
@@ -186,12 +199,21 @@ namespace Datamodel
             if (item != null && OwnerDatamodel != null)
             {
                 if (item.Owner == null)
-                    item = OwnerDatamodel.ImportElement(item, Datamodel.ImportRecursionMode.Recursive, Datamodel.ImportOverwriteMode.Stubs);
+                {
+                    var importedElement = OwnerDatamodel.ImportElement(item, Datamodel.ImportRecursionMode.Recursive, Datamodel.ImportOverwriteMode.Stubs);
+                
+                    if(importedElement is not null)
+                    {
+                        item = importedElement;
+                    }
+                }
                 else if (item.Owner != OwnerDatamodel)
+                {
                     throw new ElementOwnershipException();
+                }
             }
 
-            base.Insert_Internal(index, item);
+            base.Insert_Internal(index, item!);
         }
 
         public override Element this[int index]
@@ -203,13 +225,19 @@ namespace Datamodel
                 {
                     try
                     {
-                        elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID);
+                        elem = Inner[index] = elem.Owner.OnStubRequest(elem.ID)!;
                     }
                     catch (Exception err)
                     {
                         throw new DestubException(this, index, err);
                     }
                 }
+
+                if (elem is null)
+                {
+                    throw new InvalidOperationException("Element at specified index is null");
+                }
+
                 return elem;
             }
             set => base[index] = value;

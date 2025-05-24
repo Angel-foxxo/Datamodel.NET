@@ -4,6 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Numerics;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Globalization;
+using System.Reflection;
+using System.Xml.Linq;
+using System.Collections;
 
 namespace Datamodel.Codecs
 {
@@ -15,14 +20,10 @@ namespace Datamodel.Codecs
     [CodecFormat("keyvalues2_noids", 2)]
     [CodecFormat("keyvalues2_noids", 3)]
     [CodecFormat("keyvalues2_noids", 4)]
-    class KeyValues2 : ICodec, IDisposable
+    class KeyValues2 : ICodec
     {
-        TextReader Reader;
-        KV2Writer Writer;
-        Datamodel DM;
-
-        static readonly Dictionary<Type, string> TypeNames = new();
-        static readonly Dictionary<int, Type[]> ValidAttributes = new();
+        static readonly Dictionary<Type, string> TypeNames = [];
+        static readonly Dictionary<int, Type[]> ValidAttributes = [];
         static KeyValues2()
         {
             TypeNames[typeof(Element)] = "element";
@@ -46,12 +47,6 @@ namespace Datamodel.Codecs
             TypeNames[typeof(QAngle)] = "qangle";
 
             ValidAttributes[4] = TypeNames.Select(kv => kv.Key).ToArray();
-        }
-
-        public void Dispose()
-        {
-            Reader?.Dispose();
-            Writer?.Dispose();
         }
 
         #region Encode
@@ -82,7 +77,7 @@ namespace Datamodel.Codecs
 
             static string Sanitise(string value)
             {
-                return value?.Replace("\"", "\\\"");
+                return value.Replace("\"", "\\\"");
             }
 
             /// <summary>
@@ -134,17 +129,19 @@ namespace Datamodel.Codecs
             }
         }
 
-        string Encoding;
-        int EncodingVersion;
-
         // Multi-referenced elements are written out as a separate block at the end of the file.
         // In-line only the id is written.
-        Dictionary<Element, int> ReferenceCount;
+        Dictionary<Element, int> ReferenceCount = [];
 
         bool SupportsReferenceIds;
 
-        void CountReferences(Element elem)
+        void CountReferences(Element? elem)
         {
+            if(elem is null)
+            {
+                return;
+            }
+
             if (ReferenceCount.ContainsKey(elem))
                 ReferenceCount[elem]++;
             else
@@ -168,11 +165,11 @@ namespace Datamodel.Codecs
             }
         }
 
-        void WriteAttribute(string name, Type type, object value, bool in_array)
+        void WriteAttribute(string name, int encodingVersion, Type type, object value, bool in_array, KV2Writer writer)
         {
             bool is_element = type == typeof(Element) || type.IsSubclassOf(typeof(Element));
 
-            Type inner_type = null;
+            Type? inner_type = null;
             if (!in_array)
             {
                 // TODO: subclass check in this method like above - and in all other places with == typeof(Element)
@@ -188,64 +185,64 @@ namespace Datamodel.Codecs
             }
 
             // Elements are supported by all.
-            if (!is_element && !ValidAttributes[EncodingVersion].Contains(inner_type ?? type))
-                throw new CodecException(type.Name + " is not valid in KeyValues2 " + EncodingVersion);
+            if (!is_element && !ValidAttributes[encodingVersion].Contains(inner_type ?? type))
+                throw new CodecException(type.Name + " is not valid in KeyValues2 " + encodingVersion);
 
             if (inner_type != null)
             {
                 is_element = inner_type == typeof(Element);
 
-                Writer.WriteTokenLine(name, TypeNames[inner_type] + "_array");
+                writer.WriteTokenLine(name, TypeNames[inner_type] + "_array");
 
                 if (((System.Collections.IList)value).Count == 0)
                 {
-                    Writer.Write(" [ ]");
+                    writer.Write(" [ ]");
                     return;
                 }
 
-                if (is_element) Writer.WriteLine("[");
-                else Writer.Write(" [");
+                if (is_element) writer.WriteLine("[");
+                else writer.Write(" [");
 
-                Writer.Indent++;
+                writer.Indent++;
                 foreach (var array_value in (System.Collections.IList)value)
-                    WriteAttribute(null, inner_type, array_value, true);
-                Writer.Indent--;
-                Writer.TrimEnd(1); // remove trailing comma
+                    WriteAttribute(string.Empty, encodingVersion, inner_type, array_value, true, writer);
+                writer.Indent--;
+                writer.TrimEnd(1); // remove trailing comma
 
-                if (inner_type == typeof(Element)) Writer.WriteLine("]");
-                else Writer.Write(" ]");
+                if (inner_type == typeof(Element)) writer.WriteLine("]");
+                else writer.Write(" ]");
                 return;
             }
 
             if (is_element)
             {
-                var elem = value as Element;
-                var id = elem == null ? "" : elem.ID.ToString();
+                var elem = (Element)value;
+                var id = elem.ID.ToString();
 
                 if (in_array)
                 {
                     if (ShouldBeReferenced(elem))
                     {
-                        Writer.WriteTokenLine("element", id);
+                        writer.WriteTokenLine("element", id);
                     }
                     else
                     {
-                        Writer.WriteLine();
-                        WriteElement(elem);
+                        writer.WriteLine();
+                        WriteElement(elem, encodingVersion, writer);
                     }
 
-                    Writer.Write(",");
+                    writer.Write(",");
                 }
                 else
                 {
                     if (ShouldBeReferenced(elem))
                     {
-                        Writer.WriteTokenLine(name, "element", id);
+                        writer.WriteTokenLine(name, "element", id);
                     }
                     else
                     {
-                        Writer.WriteLine($"\"{name}\" ");
-                        WriteElement(elem);
+                        writer.WriteLine($"\"{name}\" ");
+                        WriteElement(elem, encodingVersion, writer);
                     }
                 }
             }
@@ -254,124 +251,134 @@ namespace Datamodel.Codecs
                 if (type == typeof(bool))
                     value = (bool)value ? 1 : 0;
                 else if (type == typeof(float))
-                    value = (float)value;
+                    value = FormattableString.Invariant($"{(float)value}");
                 else if (type == typeof(byte[]))
-                    value = BitConverter.ToString((byte[])value).Replace("-", string.Empty);
+                    value = Convert.ToHexString((byte[])value).Replace("-", string.Empty, false, CultureInfo.InvariantCulture);
                 else if (type == typeof(TimeSpan))
-                    value = ((TimeSpan)value).TotalSeconds;
+                    value = ((TimeSpan)value).TotalSeconds.ToString(CultureInfo.InvariantCulture);
                 else if (type == typeof(Color))
                 {
-                    var c = (Color)value;
-                    value = string.Join(" ", new int[] { c.R, c.G, c.B, c.A });
+                    var castValue = (Color)value;
+                    value = FormattableString.Invariant($"{castValue.R} {castValue.G} {castValue.B} {castValue.A}");
                 }
                 else if (value is ulong ulong_value)
-                    value = $"0x{ulong_value:X}";
+                    value = $"0x{ulong_value.ToString("x", CultureInfo.InvariantCulture)}";
                 else if (type == typeof(Vector2))
                 {
-                    var arr = new float[2];
-                    ((Vector2)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector2)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y}");
                 }
                 else if (type == typeof(Vector3))
                 {
-                    var arr = new float[3];
-                    ((Vector3)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector3)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z}");
                 }
                 else if (type == typeof(Vector4))
                 {
-                    var arr = new float[4];
-                    ((Vector4)value).CopyTo(arr);
-                    value = string.Join(" ", arr);
+                    var castValue = (Vector4)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z} {castValue.W}");
                 }
                 else if (type == typeof(Quaternion))
                 {
-                    var q = (Quaternion)value;
-                    value = string.Join(" ", q.X, q.Y, q.Z, q.W);
+                    var castValue = (Quaternion)value;
+                    value = FormattableString.Invariant($"{castValue.X} {castValue.Y} {castValue.Z} {castValue.W}");
                 }
                 else if (type == typeof(Matrix4x4))
                 {
-                    var m = (Matrix4x4)value;
-                    value = string.Join(" ", m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
+                    var castValue = (Matrix4x4)value;
+                    var matrixString =
+                        $"{castValue.M11} {castValue.M12} {castValue.M13} {castValue.M14}" +
+                        $" {castValue.M21} {castValue.M22} {castValue.M23} {castValue.M24}" +
+                        $" {castValue.M31} {castValue.M32} {castValue.M33} {castValue.M34}" +
+                        $" {castValue.M41} {castValue.M42} {castValue.M43} {castValue.M44}";
+
+                    value = FormattableString.Invariant(FormattableStringFactory.Create(matrixString));
                 }
-                else if (value is QAngle qangle_value)
+                else if (value is QAngle castValue)
                 {
-                    value = string.Join(" ", (int)qangle_value.Pitch, (int)qangle_value.Yaw, (int)qangle_value.Roll);
+                    value = FormattableString.Invariant($"{castValue.Pitch} {castValue.Yaw} {castValue.Roll}");
                 }
 
                 if (in_array)
-                    Writer.Write(String.Format(" \"{0}\",", value.ToString()));
+                    writer.Write(FormattableString.Invariant($" \"{value}\","));
                 else
-                    Writer.WriteTokenLine(name, TypeNames[type], value.ToString());
+                    writer.WriteTokenLine(name, TypeNames[type], FormattableString.Invariant($"{value}"));
             }
 
         }
 
-        private bool ShouldBeReferenced(Element elem)
+        private bool ShouldBeReferenced(Element? elem)
         {
+            if(elem is null)
+            {
+                return false;
+            }
+
             return SupportsReferenceIds && (elem == null || ReferenceCount.TryGetValue(elem, out var refCount) && refCount > 1);
         }
 
-        void WriteElement(Element element)
+        void WriteElement(Element element, int encodingVersion, KV2Writer writer)
         {
             if (TypeNames.ContainsValue(element.ClassName))
                 throw new CodecException($"Element {element.ID} uses reserved type name \"{element.ClassName}\"");
-            Writer.WriteTokens(element.ClassName);
-            Writer.WriteLine("{");
-            Writer.Indent++;
+            writer.WriteTokens(element.ClassName);
+            writer.WriteLine("{");
+            writer.Indent++;
 
             if (SupportsReferenceIds)
-                Writer.WriteTokenLine("id", "elementid", element.ID.ToString());
+                writer.WriteTokenLine("id", "elementid", element.ID.ToString());
 
             // Skip empty names right now.
             if (!string.IsNullOrEmpty(element.Name))
             {
-                Writer.WriteTokenLine("name", "string", element.Name);
+                writer.WriteTokenLine("name", "string", element.Name);
             }
 
             foreach (var attr in element.GetAllAttributesForSerialization())
             {
-                if (attr.Value == null)
-                    WriteAttribute(attr.Key, typeof(Element), null, false);
-                else
-                    WriteAttribute(attr.Key, attr.Value.GetType(), attr.Value, false);
+                if (attr.Value != null) 
+                    WriteAttribute(attr.Key, encodingVersion, attr.Value.GetType(), attr.Value, false, writer);
             }
 
-            Writer.Indent--;
-            Writer.WriteLine("}");
+            writer.Indent--;
+            writer.WriteLine("}");
         }
 
-        public void Encode(Datamodel dm, string encoding, int encoding_version, Stream stream)
+        public void Encode(Datamodel dm, string encoding, int encodingVersion, Stream stream)
         {
-            Writer = new KV2Writer(stream);
-            Encoding = encoding;
-            EncodingVersion = encoding_version;
+            var writer = new KV2Writer(stream);
 
-            SupportsReferenceIds = Encoding != "keyvalues2_noids";
+            SupportsReferenceIds = encoding != "keyvalues2_noids";
 
-            Writer.Write(String.Format(CodecUtilities.HeaderPattern, encoding, encoding_version, dm.Format, dm.FormatVersion));
-            Writer.WriteLine();
+            writer.Write(String.Format(CodecUtilities.HeaderPattern, encoding, encodingVersion, dm.Format, dm.FormatVersion));
+            writer.WriteLine();
 
-            ReferenceCount = new Dictionary<Element, int>();
+            ReferenceCount = [];
 
-            if (EncodingVersion >= 4 && dm.PrefixAttributes.Count > 0)
+            if (encodingVersion >= 4 && dm.PrefixAttributes.Count > 0)
             {
-                Writer.WriteTokens("$prefix_element$");
-                Writer.WriteLine("{");
-                Writer.Indent++;
-                Writer.WriteTokenLine("id", "elementid", Guid.NewGuid().ToString());
+                writer.WriteTokens("$prefix_element$");
+                writer.WriteLine("{");
+                writer.Indent++;
+                writer.WriteTokenLine("id", "elementid", Guid.NewGuid().ToString());
                 foreach (var attr in dm.PrefixAttributes)
-                    WriteAttribute(attr.Key, attr.Value.GetType(), attr.Value, false);
-                Writer.Indent--;
-                Writer.WriteLine("}");
-                Writer.WriteLine();
+                    if(attr.Value != null)
+                    {
+                        WriteAttribute(attr.Key, encodingVersion, attr.Value.GetType(), attr.Value, false, writer);
+                    }
+                writer.Indent--;
+                writer.WriteLine("}");
+                writer.WriteLine();
             }
 
             if (SupportsReferenceIds)
                 CountReferences(dm.Root);
 
-            WriteElement(dm.Root);
-            Writer.WriteLine();
+            if(dm.Root != null)
+            {
+                WriteElement(dm.Root, encodingVersion, writer);
+            }
+            writer.WriteLine();
 
             if (SupportsReferenceIds)
             {
@@ -379,27 +386,69 @@ namespace Datamodel.Codecs
                 {
                     if (pair.Key == dm.Root)
                         continue;
-                    Writer.WriteLine();
-                    WriteElement(pair.Key);
-                    Writer.WriteLine();
+                    writer.WriteLine();
+                    WriteElement(pair.Key, encodingVersion, writer);
+                    writer.WriteLine();
                 }
             }
 
-            Writer.Flush();
+            writer.Flush();
         }
         #endregion
 
         #region Decode
+
+        private class IntermediateData
+        {
+            // these store element refs while we process the elements, once were done
+            // we can go trough these and actually create the attributes
+            // and add the elements to lists
+            public Dictionary<Element, List<(string, Guid)>> PropertiesToAdd = [];
+            public Dictionary<IList, List<Guid>> ListRefs = [];
+
+            public void HandleElementProp(Element? element, string attrName, Guid id)
+            {
+                if(element is null)
+                {
+                    throw new InvalidDataException("Trying to handle the propery of an invalid element");
+                }
+
+                PropertiesToAdd.TryGetValue(element, out var attrList);
+
+                if (attrList == null)
+                {
+                    attrList = [];
+                    PropertiesToAdd.Add(element, attrList);
+                }
+
+                attrList.Add((attrName, id));
+
+            }
+
+            public void HandleListRefs(IList list, Guid id)
+            {
+                ListRefs.TryGetValue(list, out var guidList);
+
+                if (guidList == null)
+                {
+                    guidList = [];
+                    ListRefs.Add(list, guidList);
+                }
+
+                guidList.Add(id);
+            }
+        }
+
         readonly StringBuilder TokenBuilder = new();
         int Line = 0;
-        string Decode_NextToken()
+        string Decode_NextToken(StreamReader reader)
         {
             TokenBuilder.Clear();
             bool escaped = false;
             bool in_block = false;
             while (true)
             {
-                var read = Reader.Read();
+                var read = reader.Read();
                 if (read == -1) throw new EndOfStreamException();
                 var c = (char)read;
                 if (escaped)
@@ -434,111 +483,107 @@ namespace Datamodel.Codecs
             }
         }
 
-        Element Decode_ParseElementId()
+        Element? Decode_ParseElement(string class_name, ReflectionParams reflectionParams, StreamReader reader, Datamodel dataModel, IntermediateData intermediateData)
         {
-            Element elem;
-            var id_s = Decode_NextToken();
+            string elem_class = class_name ?? Decode_NextToken(reader);
+            string elem_name = string.Empty;
+            string elem_id = string.Empty;
+            Element? elem = null;
 
-            if (string.IsNullOrEmpty(id_s))
-                elem = null;
-            else
-            {
-                Guid id = new(id_s);
-                elem = DM.AllElements[id];
-                elem ??= new Element(DM, id);
-            }
-            return elem;
-        }
+            var types = CodecUtilities.GetReflectionTypes(reflectionParams);
 
-        Element Decode_ParseElement(string class_name)
-        {
-            string elem_class = class_name ?? Decode_NextToken();
-            string elem_name = null;
-            string elem_id = null;
-            Element elem = null;
-
-            string next = Decode_NextToken();
-            if (next != "{") throw new CodecException(String.Format("Expected Element opener, got '{0}'.", next));
+            string next = Decode_NextToken(reader);
+            if (next != "{") throw new CodecException($"Expected Element opener, got '{next}'.");
             while (true)
             {
-                next = Decode_NextToken();
+                next = Decode_NextToken(reader);
                 if (next == "}") break;
 
                 var attr_name = next;
-                var attr_type_s = Decode_NextToken();
+                var attr_type_s = Decode_NextToken(reader);
                 var attr_type = TypeNames.FirstOrDefault(kv => kv.Value == attr_type_s.Split('_')[0]).Key;
 
                 if (elem == null && attr_name == "id" && attr_type_s == "elementid")
                 {
-                    elem_id = Decode_NextToken();
+                    elem_id = Decode_NextToken(reader);
                     var id = new Guid(elem_id);
-                    var local_element = DM.AllElements[id];
-                    if (local_element != null)
+                    if (elem_class != "$prefix_element$")
                     {
-                        elem = local_element;
-                        elem.Name = elem_name;
-                        elem.ClassName = elem_class;
-                        elem.Stub = false;
+                        CodecUtilities.TryConstructCustomElement(types, dataModel, elem_class, elem_name, id, out elem);
+                        elem ??= new Element(dataModel, elem_name, id, elem_class);
                     }
-                    else if (elem_class != "$prefix_element$")
-                        elem = new Element(DM, elem_name, new Guid(elem_id), elem_class);
 
                     continue;
                 }
 
                 if (attr_name == "name" && attr_type == typeof(string))
                 {
-                    elem_name = Decode_NextToken();
+                    elem_name = Decode_NextToken(reader);
                     if (elem != null)
                         elem.Name = elem_name;
                     continue;
                 }
 
-                if (elem == null)
-                    continue;
-
                 if (attr_type_s == "element")
                 {
-                    elem.Add(attr_name, Decode_ParseElementId());
+                    var id_s = Decode_NextToken(reader);
+
+                    if (!string.IsNullOrEmpty(id_s))
+                    {
+                        intermediateData.HandleElementProp(elem, attr_name, new Guid(id_s));
+                    }
                     continue;
                 }
 
-                object attr_value = null;
+                object? attr_value = null;
 
                 if (attr_type == null)
-                    attr_value = Decode_ParseElement(attr_type_s);
+                    attr_value = Decode_ParseElement(attr_type_s, reflectionParams, reader, dataModel, intermediateData);
                 else if (attr_type_s.EndsWith("_array"))
                 {
                     var array = CodecUtilities.MakeList(attr_type, 5); // assume 5 items
                     attr_value = array;
 
-                    next = Decode_NextToken();
+                    next = Decode_NextToken(reader);
                     if (next != "[") throw new CodecException(String.Format("Expected array opener, got '{0}'.", next));
                     while (true)
                     {
-                        next = Decode_NextToken();
+                        next = Decode_NextToken(reader);
                         if (next == "]") break;
 
                         if (next == "element") // Element ID reference
-                            array.Add(Decode_ParseElementId());
-                        else if (attr_type == typeof(Element)) // inline Element
-                            array.Add(Decode_ParseElement(next));
-                        else // normal value
-                            array.Add(Decode_ParseValue(attr_type, next));
+                        {
+                            var id_s = Decode_NextToken(reader);
+
+                            if (!string.IsNullOrEmpty(id_s))
+                            {
+                                intermediateData.HandleListRefs(array, new Guid(id_s));
+                            }
+                        }
+                        // inline Element
+                        else if (attr_type == typeof(Element)) 
+                        {
+                            array.Add(Decode_ParseElement(next, reflectionParams, reader, dataModel, intermediateData));
+                        }
+                        // normal value
+                        else
+                        {
+                            array.Add(Decode_ParseValue(attr_type, next, reflectionParams, reader, dataModel, intermediateData));
+                        }
                     }
                 }
                 else
-                    attr_value = Decode_ParseValue(attr_type, Decode_NextToken());
+                    attr_value = Decode_ParseValue(attr_type, Decode_NextToken(reader), reflectionParams, reader, dataModel, intermediateData);
 
                 if (elem != null)
                     elem.Add(attr_name, attr_value);
                 else
-                    DM.PrefixAttributes[attr_name] = attr_value;
+                    dataModel.PrefixAttributes[attr_name] = attr_value;
             }
             return elem;
         }
 
-        object Decode_ParseValue(Type type, string value)
+        object? Decode_ParseValue(Type type, string value, ReflectionParams reflectionParams, StreamReader reader, Datamodel dataModel, IntermediateData intermediateData)
         {
             if (type == typeof(string))
                 return value;
@@ -546,37 +591,60 @@ namespace Datamodel.Codecs
             value = value.Trim();
 
             if (type == typeof(Element))
-                return Decode_ParseElement(value);
+                return Decode_ParseElement(value, reflectionParams, reader, dataModel, intermediateData);
             if (type == typeof(int))
-                return int.Parse(value);
+                return int.Parse(value, CultureInfo.InvariantCulture);
             else if (type == typeof(float))
-                return float.Parse(value);
+                return float.Parse(value, CultureInfo.InvariantCulture);
             else if (type == typeof(bool))
-                return byte.Parse(value) == 1;
+                return byte.Parse(value, CultureInfo.InvariantCulture) == 1;
             else if (type == typeof(byte[]))
             {
+                // need to sanitise input here because for example when exporting map as txt,
+                // hammer will format the binary data to fit nicer on the screen by inserting two tabs
+                var sb = new StringBuilder(value.Length);
+                foreach (char c in value)
+                {
+                    switch (c)
+                    {
+                        case '\\':
+                        case '\r':
+                        case '\n':
+                        case '\t':
+                        case ' ':
+                            continue;
+                        default:
+                            sb.Append(c);
+                            break;
+                    }
+                }
+                value = sb.ToString();
+
                 byte[] result = new byte[value.Length / 2];
+
                 for (int i = 0; i * 2 < value.Length; i++)
                 {
-                    result[i] = byte.Parse(value.Substring(i * 2, 2), System.Globalization.NumberStyles.HexNumber);
+                    var slice = value.AsSpan(i * 2, 2);
+                    result[i] = byte.Parse(slice, System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                 }
+
                 return result;
             }
             else if (type == typeof(TimeSpan))
-                return TimeSpan.FromTicks((long)(double.Parse(value) * TimeSpan.TicksPerSecond));
+                return TimeSpan.FromTicks((long)(double.Parse(value, CultureInfo.InvariantCulture) * TimeSpan.TicksPerSecond));
 
-            var num_list = value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            var num_list = value.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries);
 
             if (type == typeof(Color))
             {
-                var rgba = num_list.Select(i => byte.Parse(i)).ToArray();
+                var rgba = num_list.Select(i => byte.Parse(i, CultureInfo.InvariantCulture)).ToArray();
                 return Color.FromBytes(rgba);
             }
 
-            if (type == typeof(ulong)) return ulong.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber);
-            if (type == typeof(byte)) return byte.Parse(value);
+            if (type == typeof(ulong)) return ulong.Parse(value.Remove(0, 2), System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            if (type == typeof(byte)) return byte.Parse(value, CultureInfo.InvariantCulture);
 
-            var f_list = num_list.Select(i => float.Parse(i)).ToArray();
+            var f_list = num_list.Select(i => float.Parse(i, CultureInfo.InvariantCulture)).ToArray();
             if (type == typeof(Vector2)) return new Vector2(f_list[0], f_list[1]);
             else if (type == typeof(Vector3)) return new Vector3(f_list[0], f_list[1], f_list[2]);
             else if (type == typeof(Vector4)) return new Vector4(f_list[0], f_list[1], f_list[2], f_list[3]);
@@ -591,33 +659,52 @@ namespace Datamodel.Codecs
             else throw new ArgumentException($"Internal error: ParseValue passed unsupported type: {type}.");
         }
 
-        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode)
+        public Datamodel Decode(string encoding, int encoding_version, string format, int format_version, Stream stream, DeferredMode defer_mode, ReflectionParams reflectionParams)
         {
-            DM = new Datamodel(format, format_version);
+            var dataModel = new Datamodel(format, format_version);
 
             if (encoding == "keyvalues2_noids")
                 throw new NotImplementedException("KeyValues2_noids decoding not implemented.");
 
             stream.Seek(0, SeekOrigin.Begin);
-            Reader = new StreamReader(stream, Datamodel.TextEncoding);
-            Reader.ReadLine(); // skip DMX header
+            var reader = new StreamReader(stream, Datamodel.TextEncoding);
+            reader.ReadLine(); // skip DMX header
             Line = 1;
             string next;
+
+            var intermediateData = new IntermediateData();
 
             while (true)
             {
                 try
-                { next = Decode_NextToken(); }
+                { next = Decode_NextToken(reader); }
                 catch (EndOfStreamException)
                 { break; }
 
                 try
-                { Decode_ParseElement(next); }
+                { Decode_ParseElement(next, reflectionParams, reader, dataModel, intermediateData); }
                 catch (Exception err)
                 { throw new CodecException($"KeyValues2 decode failed on line {Line}:\n\n{err.Message}", err); }
             }
 
-            return DM;
+            foreach (var propList in intermediateData.PropertiesToAdd)
+            {
+                foreach (var prop in propList.Value)
+                {
+                    propList.Key.Add(prop.Item1, dataModel.AllElements[prop.Item2]);
+                }
+
+            }
+
+            foreach (var list in intermediateData.ListRefs)
+            {
+                foreach (var id in list.Value)
+                {
+                    list.Key.Add(dataModel.AllElements[id]);
+                }
+            }
+
+            return dataModel;
         }
         #endregion
     }

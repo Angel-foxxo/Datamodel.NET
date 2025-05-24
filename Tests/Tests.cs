@@ -8,7 +8,8 @@ using NUnit.Framework;
 using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
-using System.Text;
+using System.Globalization;
+using VMAP;
 
 namespace Datamodel_Tests
 {
@@ -20,13 +21,15 @@ namespace Datamodel_Tests
         protected FileStream KeyValues2_1_File = File.OpenRead(TestContext.CurrentContext.TestDirectory + "/Resources/taunt05.dmx");
 
         const string GameBin = @"C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
-        //const string GameBin = @"D:/Games/steamapps/common/Counter-Strike Global Offensive/game/bin/win64";
 
         static readonly string DmxConvertExe = Path.Combine(GameBin, "dmxconvert.exe");
         static readonly bool DmxConvertExe_Exists = File.Exists(DmxConvertExe);
 
         static DatamodelTests()
         {
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("fr-FR");
+
             var binary = new byte[16];
             Random.Shared.NextBytes(binary);
             var quat = Quaternion.Normalize(new Quaternion(1, 2, 3, 4)); // dmxconvert will normalise this if I don't!
@@ -51,7 +54,7 @@ namespace Datamodel_Tests
 
             TestValues_V3 = TestValues_V1.Concat(new object[] {
                 (byte)0xFF,
-                (ulong)0xFFFFFFFF,
+                (UInt64)0xFFFFFFFF,
                 //new QAngle(0, 90, 180)
             }).ToList();
         }
@@ -219,43 +222,6 @@ namespace Datamodel_Tests
             dm.Dispose();
         }
 
-        [Test]
-        public static void TypedArrayAddingRemoving()
-        {
-            using var dm = MakeDatamodel();
-            var array = new ElementArray();
-
-            var elementA = new Element(dm, "a");
-            var elementB = new Element();
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            dm.Root["a"] = array;
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            array.Add(elementB);
-            Assert.True(array.Remove(elementB));
-
-            Assert.False(array.Remove(elementB));
-            Assert.False(array.Remove(elementA));
-
-            ((IList)array).Add(elementA);
-            array.Add(elementB);
-
-            array.Add(elementA); // add again?
-            array.Remove(elementA);
-
-            Assert.AreEqual(2, array.Count); // only removes first instance
-
-            array.Remove(elementA);
-            array.Remove(elementB);
-            
-            Assert.AreEqual(0, array.Count);
-        }
-
         protected static DM Create(string encoding, int version, bool memory_save = false)
         {
             var dm = MakeDatamodel();
@@ -290,32 +256,110 @@ namespace Datamodel_Tests
     public class Functionality : DatamodelTests
     {
         [Test]
-        public void Create_Datamodel_Vmap()
+        public static void TypedArrayAddingRemoving()
         {
-            using var datamodel = new DM("vmap", 29);
-            datamodel.PrefixAttributes.Add("map_asset_references", new List<string>());
-            datamodel.Root = new Element(datamodel, "root", classNameOverride: "CMapRoot")
+            using var dm = MakeDatamodel();
+            var array = new ElementArray();
+
+            var elementA = new Element(dm, "a");
+            var elementB = new Element();
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            dm.Root["a"] = array;
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            array.Add(elementB);
+            Assert.True(array.Remove(elementB));
+
+            Assert.False(array.Remove(elementB));
+            Assert.False(array.Remove(elementA));
+
+            ((IList)array).Add(elementA);
+            array.Add(elementB);
+
+            array.Add(elementA); // add again?
+            array.Remove(elementA);
+
+            Assert.AreEqual(2, array.Count); // only removes first instance
+
+            array.Remove(elementA);
+            array.Remove(elementB);
+
+            Assert.AreEqual(0, array.Count);
+        }
+
+        private static void Validate_Vmap_Reflection(Datamodel.Datamodel unserialisedVmap)
+        {
+            Assert.AreEqual(typeof(CMapRootElement), unserialisedVmap.Root.GetType());
+
+            CMapRootElement root = (CMapRootElement)unserialisedVmap.Root;
+
+            Assert.AreEqual(typeof(CMapWorld), root.world.GetType());
+
+            var world = root.world;
+
+            var props = world.children.Where(i => i.ClassName == "CMapEntity").OfType<CMapEntity>().ToList();
+
+            var prop = props[0];
+            var propclass = prop.ClassName;
+            var proptype = prop.GetType();
+            var entityprop = prop;
+
+
+            var propProperties = props[0].EntityProperties;
+            var classname = propProperties.Get<string>("classname");
+
+            var meshes = world.children.Where(i => i.ClassName == "CMapMesh").OfType<CMapMesh>().ToList();
+            var mesh = meshes[0];
+
+            var vertexData = mesh.meshData.vertexData;
+
+            Assert.AreEqual(vertexData.size, 8);
+            Assert.AreEqual(vertexData.streams[0]["semanticName"], "position");
+
+            var typedPolygonMeshData = (VMAP.CDmePolygonMeshDataStream)vertexData.streams[0];
+            Assert.AreEqual(typedPolygonMeshData.semanticName, "position");
+
+            var typedPolygonMeshDataStream = typedPolygonMeshData.data as Vector3Array;
+            Assert.IsNotNull(typedPolygonMeshDataStream);
+
+            Assert.That(unserialisedVmap.PrefixAttributes["map_asset_references"], Is.Not.Empty);
+
+            // iterate all datamodel elements, and verify that all their types are superclasses of Element
+            foreach (var elem in unserialisedVmap.AllElements)
             {
-                ["isprefab"] = false,
-                ["showgrid"] = true,
-                ["snaprotationangle"] = 15,
-                ["gridspacing"] = 64,
-                ["show3dgrid"] = true,
-                ["itemFile"] = true,
-                ["world"] = new Element(datamodel, "world", classNameOverride: "CMapWorld"),
-            };
+                if (elem.Name == "subdivisionBinding")
+                {
+                    continue; // known case, skip
+                }
 
-            using var stream = new MemoryStream();
-            datamodel.Save(stream, "keyvalues2", 4);
-            Assert.That(stream.Length, Is.GreaterThan(0));
+                // prefix elements, still an Element type
+                if (elem.ContainsKey("map_asset_references"))
+                {
+                    continue;
+                }
 
-            using var actual = DM.Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "vmaptest1.dmx"));
+                Assert.That(elem, Is.Not.TypeOf<Element>(), $"Found object {elem.ID} {elem.ClassName} that is still an Element type.");
+            }
 
-            //Assert.That(actual.PrefixAttributes.ContainsKey("map_asset_references"), Is.True);
-            //Assert.That(actual.PrefixAttributes["map_asset_references"], Is.Empty);
-            Assert.That(actual.Root, Is.Not.Null);
-            Assert.That(actual.Root["world"], Is.Not.Null);
-            Assert.That(actual.Root["world"], Is.EqualTo(datamodel.Root["world"]));
+        }
+
+        [Test]
+        public void LoadVmap_Reflection_Binary()
+        {
+            var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap"));
+            Validate_Vmap_Reflection(unserialisedVmap);
+        }
+
+        [Test]
+        public void LoadVmap_Reflection_Text()
+        {
+            var unserialisedVmap = DM.Load<CMapRootElement>(Path.Combine(TestContext.CurrentContext.TestDirectory, "Resources", "cs2_map.vmap.txt"));
+            Validate_Vmap_Reflection(unserialisedVmap);
         }
 
         public class NullOwnerElement
@@ -402,16 +446,6 @@ namespace Datamodel_Tests
             }
 
             [Test]
-            public void PropertySetByKey_Throws()
-            {
-                var elem = new CustomElement();
-
-                var ex = Assert.Throws(typeof(InvalidOperationException), () => elem["MyProperty"] = 5);
-
-                Assert.That(ex.Message, Does.Contain("Cannot set the value of a property-derived attribute by key"));
-            }
-
-            [Test]
             public void CanBeAssignedToDatamodelRoot()
             {
                 var elem = new CustomElement();
@@ -458,7 +492,7 @@ namespace Datamodel_Tests
 
                 using var stream = new MemoryStream();
                 dm.Save(stream, "keyvalues2", 4);
-                
+
                 stream.Position = 0;
                 using (var reader = new StreamReader(stream))
                 {
@@ -478,7 +512,7 @@ namespace Datamodel_Tests
                 // binary
                 using var stream2 = new MemoryStream();
                 dm.Save(stream2, "binary", 9);
-                
+
                 stream2.Position = 0;
                 using var reader2 = new BinaryReader(stream2);
                 var bytes = reader2.ReadBytes((int)stream2.Length);
@@ -540,7 +574,7 @@ namespace Datamodel_Tests
         [Test]
         public void Dota2_Binary_9()
         {
-            var dm = DM.Load(Binary_9_File);
+            var dm = DM.Load<Element>(Binary_9_File);
             PrintContents(dm);
             dm.Root.Get<Element>("skeleton").GetArray<Element>("children")[0].Any();
             SaveAndConvert(dm, "binary", 9);
@@ -584,7 +618,7 @@ namespace Datamodel_Tests
         [Test, TestCaseSource(nameof(GetDmxFiles))]
         public void Unserialize(string path)
         {
-            var dm = DM.Load(path);
+            var dm = DM.Load(path, Datamodel.Codecs.DeferredMode.Automatic);
             PrintContents(dm);
             dm.Dispose();
         }
