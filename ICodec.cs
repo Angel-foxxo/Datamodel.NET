@@ -256,12 +256,11 @@ namespace Datamodel.Codecs
 
             object uninitializedObject = RuntimeHelpers.GetUninitializedObject(derivedType);
 
-            elementConstructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
-
             // this will initialize values such as
             // public Datamodel.ElementArray Children { get; } = [];
             customClassInitializer.Invoke(uninitializedObject, []);
 
+            elementConstructor.Invoke(uninitializedObject, [dataModel, elem_name, elem_id, elem_class]);
 
             elem = (Element?)uninitializedObject;
             return true;
