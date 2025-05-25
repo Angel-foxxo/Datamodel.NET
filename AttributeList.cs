@@ -273,8 +273,8 @@ namespace Datamodel
                         {
                             var valueType = value.GetType();
 
-                            // type must be equal, or a superclass
-                            if (prop.PropertyType != valueType && valueType.IsSubclassOf(prop.PropertyType))
+                            // types must be equal, or a superclass
+                            if (prop.PropertyType != typeof(Element) && valueType.IsSubclassOf(prop.PropertyType))
                             {
                                 throw new InvalidDataException($"class property '{prop.Name}' with type '{prop.PropertyType}' does not match the type '{valueType}' of the value being set, this is likely a mismatch between the real class and the class from the datamodel");
                             }

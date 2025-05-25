@@ -180,7 +180,7 @@ internal class CMapSelectionSet : DMElement
 {
     public Datamodel.ElementArray Children { get; } = [];
     public string SelectionSetName { get; set; } = string.Empty;
-    public CObjectSelectionSetDataElement SelectionSetData { get; set; } = [];
+    public DMElement SelectionSetData { get; set; } = [];
 
     public CMapSelectionSet() { }
     public CMapSelectionSet(string name)
@@ -193,6 +193,12 @@ internal class CMapSelectionSet : DMElement
 internal class CObjectSelectionSetDataElement : DMElement
 {
     public Datamodel.ElementArray selectedObjects { get; set; } = [];
+}
+
+internal class CFaceSelectionSetDataElement : DMElement
+{
+    public Datamodel.IntArray faces { get; set; } = [];
+    public Datamodel.ElementArray meshes { get; set; } = [];
 }
 
 
