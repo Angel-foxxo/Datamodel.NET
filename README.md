@@ -28,12 +28,10 @@ Additionally, the following Datamodel.NET types are supported:
 ## Datamodel.NET features
 
 * Support for all known versions of Valve's `binary` and `keyvalues2` DMX encodings
-* Convenient `IEnumerable`, `INotifyPropertyChanged` and `INotifyCollectionChanged` implementations
-* Supports partial trust
 * Inline documentation
 * Binary codec supports just-in-time attribute loading
 * Write your own codecs with the `ICodec` interface
-* Support for property based attributes, Datamodel.Element subclassing (serialize only)
+* Serialize and deserialize support for Datamodel.Element subclasses
 
 ## Quick example
 
