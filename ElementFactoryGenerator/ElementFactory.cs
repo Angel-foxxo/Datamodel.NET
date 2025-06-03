@@ -9,8 +9,6 @@ using System.Text;
 [Generator]
 public class ElementFactoryGenerator : IIncrementalGenerator
 {
-    public static StringBuilder ToplevelDebugBuilder = new();
-
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var provider = context.SyntaxProvider.CreateSyntaxProvider(
@@ -160,7 +158,6 @@ public class ElementFactoryGenerator : IIncrementalGenerator
             };
             """");
 
-        context.AddSource("debugoutput.g.cs", ToplevelDebugBuilder.ToString());
         context.AddSource("ElementFactory.g.cs", elementFactory.ToString());
     }
 
