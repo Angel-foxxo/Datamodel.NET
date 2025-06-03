@@ -241,18 +241,18 @@ namespace Datamodel
         /// <param name="defer_mode">How to handle deferred loading.</param>
         public static Datamodel Load(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic)
         {
-            return Load_Internal<Element>(stream, Assembly.GetCallingAssembly(), defer_mode, null);
+            return Load_Internal<Element>(stream, defer_mode, null);
         }
         /// <summary>
         /// Loads a Datamodel from a <see cref="Stream"/>.
-        /// </summary>
+        /// </summary> 
         /// <param name="stream">The input Stream.</param>
         /// <param name="defer_mode">How to handle deferred loading.</param>
         /// <typeparam  name="T">Type hint for what the Root of this datamodel should be when using reflection</param>
         public static Datamodel Load<T>(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
             where T : Element
         {
-            return Load_Internal<T>(stream, Assembly.GetCallingAssembly(), defer_mode, reflectionParams);
+            return Load_Internal<T>(stream,defer_mode, reflectionParams);
         }
 
         /// <summary>
@@ -262,7 +262,7 @@ namespace Datamodel
         /// <param name="defer_mode">How to handle deferred loading.</param>
         public static Datamodel Load(byte[] data, DeferredMode defer_mode = DeferredMode.Automatic)
         {
-            return Load_Internal<Element>(new MemoryStream(data, true), Assembly.GetCallingAssembly(), defer_mode);
+            return Load_Internal<Element>(new MemoryStream(data, true),defer_mode);
         }
         /// <summary>
         /// Loads a Datamodel from a byte array.
@@ -273,7 +273,7 @@ namespace Datamodel
         public static Datamodel Load<T>(byte[] data, ReflectionParams? reflectionParams = null)
              where T : Element
         {
-            return Load_Internal<T>(new MemoryStream(data, true), Assembly.GetCallingAssembly(), DeferredMode.Disabled, reflectionParams);
+            return Load_Internal<T>(new MemoryStream(data, true), DeferredMode.Disabled, reflectionParams);
         }
 
         /// <summary>
@@ -287,7 +287,7 @@ namespace Datamodel
             Datamodel? dm = null;
             try
             {
-                dm = Load_Internal<Element>(stream, Assembly.GetCallingAssembly(), defer_mode);
+                dm = Load_Internal<Element>(stream,defer_mode);
                 return dm;
             }
             finally
@@ -304,20 +304,37 @@ namespace Datamodel
             where T : Element
         {
             using var stream = File.OpenRead(path);
-            return Load_Internal<T>(stream, Assembly.GetCallingAssembly(), DeferredMode.Disabled, reflectionParams);
+            return Load_Internal<T>(stream, DeferredMode.Disabled, reflectionParams);
         }
 
-        private static Datamodel Load_Internal<T>(Stream stream, Assembly callingAssembly, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
+        private static Datamodel Load_Internal<T>(Stream stream, DeferredMode defer_mode = DeferredMode.Automatic, ReflectionParams? reflectionParams = null)
             where T : Element
         {
             reflectionParams ??= new ();
 
-            if(typeof(T) == typeof(Element))
+            var templateType = typeof(T);
+
+            if(templateType is null)
+            {
+                throw new InvalidDataException("Template type can't be null");
+            }
+
+            if(templateType == typeof(Element))
             {
                 reflectionParams.AttemptReflection = false;
             }
 
-            reflectionParams.AssembliesToSearch.Add(callingAssembly);
+            // if user doesnt specify these assume assembly and namespace of root node
+            if(reflectionParams.Assembly == string.Empty)
+            {
+                reflectionParams.Assembly = templateType.Assembly.GetName().Name!;
+            }
+
+            if (reflectionParams.Namespace == string.Empty)
+            {
+                reflectionParams.Namespace = templateType.Namespace!;
+            }
+
 
             stream.Seek(0, SeekOrigin.Begin);
             var header = string.Empty;
@@ -343,6 +360,9 @@ namespace Datamodel
             int format_version = int.Parse(match.Groups[4].Value);
 
             ICodec codec = GetCodec(encoding, encoding_version);
+
+            var typeNamespace = typeof(T).Namespace;
+            var typeAssembly = typeof(T).Assembly;
 
             var dm = codec.Decode(encoding, encoding_version, format, format_version, stream, defer_mode, reflectionParams);
             if (defer_mode == DeferredMode.Automatic && codec is IDeferredAttributeCodec deferredCodec)
