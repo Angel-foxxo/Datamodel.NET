@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32901.215
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Datamodel.NET", "Datamodel.NET.csproj", "{075743A9-B292-410C-B68F-6E6CF588D60A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Datamodel.NET", "Datamodel.NET\Datamodel.NET.csproj", "{075743A9-B292-410C-B68F-6E6CF588D60A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests", "Tests\Tests.csproj", "{4C928D60-5E48-4C0D-9C7E-C75D9734CD58}"
 EndProject
