@@ -9,7 +9,7 @@ using Datamodel;
 using System.Numerics;
 using DM = Datamodel.Datamodel;
 using System.Globalization;
-using VMAP;
+using Tests.VMAP;
 
 namespace Datamodel_Tests
 {
@@ -321,7 +321,7 @@ namespace Datamodel_Tests
             Assert.AreEqual(vertexData.size, 8);
             Assert.AreEqual(vertexData.streams[0]["semanticName"], "position");
 
-            var typedPolygonMeshData = (VMAP.CDmePolygonMeshDataStream)vertexData.streams[0];
+            var typedPolygonMeshData = (CDmePolygonMeshDataStream)vertexData.streams[0];
             Assert.AreEqual(typedPolygonMeshData.semanticName, "position");
 
             var typedPolygonMeshDataStream = typedPolygonMeshData.data as Vector3Array;

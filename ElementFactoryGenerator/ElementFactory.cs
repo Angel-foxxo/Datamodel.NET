@@ -42,14 +42,14 @@ public class ElementFactoryGenerator : IIncrementalGenerator
 
         var (compilation, classDeclList) = tuple;
 
-        var runningAssembly = new FactoryAssembly(compilation.AssemblyName!);
+        var runningAssembly = new FactoryAssembly(compilation.AssemblyName);
         foreach (var classDecl in classDeclList)
         {
             var type = compilation.GetSemanticModel(classDecl.SyntaxTree).GetDeclaredSymbol(classDecl);
 
-            if(type is not null)
+            if (type is not null)
             {
-                runningAssembly.AddType(type.ContainingNamespace.Name, type);
+                runningAssembly.AddType(type.ContainingNamespace.ToDisplayString(), type);
             }
         }
         assemblies.Add(runningAssembly);
@@ -66,7 +66,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
             var assemblyTypes = GetAllClassesFromAssembly(assemblySymbol);
             foreach (var assemblyType in assemblyTypes)
             {
-                referencedAssembly.AddType(assemblyType.ContainingNamespace.Name, assemblyType);
+                referencedAssembly.AddType(assemblyType.ContainingNamespace.ToDisplayString(), assemblyType);
             }
 
             assemblies.Add(referencedAssembly);
@@ -97,18 +97,18 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                 var validTypes = 0;
                 foreach (var type in nameSpace.Types)
                 {
-                    if (ValidateType(type))
+                    if (ValidateType(type, compilation))
                     {
                         validTypes++;
 
-                     typeseStringBuilder.AppendLine(
-                     $""""
+                        typeseStringBuilder.AppendLine(
+                        $""""
 
                                                 case "{type.Name}":
                                                     return new {type.ToDisplayString()}();
                     """");
                     }
-                        
+
                 }
 
                 typeseStringBuilder.AppendLine(
@@ -116,7 +116,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                                         }
                 """");
 
-                if(validTypes > 0)
+                if (validTypes > 0)
                 {
                     validNamespaces++;
                     namespaceStringBuilder.AppendLine(
@@ -127,7 +127,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                                         break;
                     """");
                 }
-               
+
             }
 
             namespaceStringBuilder.AppendLine(
@@ -135,7 +135,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                                 }
                 """");
 
-            if(validNamespaces > 0)
+            if (validNamespaces > 0)
             {
                 elementFactory.AppendLine(
                 $"""
@@ -145,7 +145,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                  
                  """);
             }
-           
+
         }
 
         elementFactory.AppendLine(
@@ -161,7 +161,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
         context.AddSource("ElementFactory.g.cs", elementFactory.ToString());
     }
 
-    private static bool ValidateType(INamedTypeSymbol type)
+    private static bool ValidateType(INamedTypeSymbol type, Compilation compilation)
     {
         if (InheritsFromFullName(type, "Datamodel.Element"))
         {
@@ -171,10 +171,18 @@ public class ElementFactoryGenerator : IIncrementalGenerator
                 return false;
             }
 
-            // only allow public and internal classes
-            if (type.DeclaredAccessibility != Accessibility.Public && type.DeclaredAccessibility != Accessibility.Internal)
+            if (type.DeclaredAccessibility != Accessibility.Internal && type.DeclaredAccessibility != Accessibility.Public)
             {
                 return false;
+            }
+
+            // only internal classes in execution assembly are fine
+            if (type.DeclaredAccessibility == Accessibility.Internal)
+            {
+                if(compilation.Assembly != type.ContainingAssembly)
+                {
+                    return false;
+                }
             }
 
             return true;
@@ -249,7 +257,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
         {
             NamespacesContainsNamespace(nameSpaceName, out FactoryNamespace? foundNameSpace);
 
-            if(foundNameSpace == null)
+            if (foundNameSpace == null)
             {
                 foundNameSpace = new FactoryNamespace(nameSpaceName);
                 Namespaces.Add(foundNameSpace);
@@ -262,7 +270,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
         {
             foreach (var nameSpace in Namespaces)
             {
-                if(nameSpace.Name == namespaceName)
+                if (nameSpace.Name == namespaceName)
                 {
                     outNameSpace = nameSpace;
                     return true;

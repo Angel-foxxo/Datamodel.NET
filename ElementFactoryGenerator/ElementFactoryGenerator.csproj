@@ -3,8 +3,12 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
+		<Version>0.1</Version>
+		<PackageLicenseFile>COPYING</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<Nullable>enable</Nullable>
-		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<IsRoslynComponent>true</IsRoslynComponent>
 	</PropertyGroup>
 
