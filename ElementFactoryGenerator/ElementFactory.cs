@@ -179,7 +179,7 @@ public class ElementFactoryGenerator : IIncrementalGenerator
             // only internal classes in execution assembly are fine
             if (type.DeclaredAccessibility == Accessibility.Internal)
             {
-                if(compilation.Assembly != type.ContainingAssembly)
+                if (!SymbolEqualityComparer.Default.Equals(compilation.Assembly, type.ContainingAssembly))
                 {
                     return false;
                 }
