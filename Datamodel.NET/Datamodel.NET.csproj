@@ -4,8 +4,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Datamodel</RootNamespace>
     <PackageId>KeyValues2</PackageId>
-    <Version>0.8</Version>
-    <Version>0.9</Version>
+    <Version>0.9-beta</Version>
 	<Nullable>enable</Nullable>
     <PackageLicenseFile>COPYING</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
